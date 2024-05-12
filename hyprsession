@@ -32,9 +32,8 @@ def make_lambdas(vals) :
 
 PROPS = [make_lambdas(val) for val in [
     (lambda info : f"monitor {info['monitor']}", True),
-    (lambda info : f"workspace {info['workspace']['id']}", True),
+    (lambda info : f"workspace {info['workspace']['id']} silent", True),
     (lambda : "fullscreenmode " + info["fullscreenmode"], lambda info : info["fullscreen"]),
-    ("silent", True),
     ("float", lambda info : info["floating"]),
     ("pinned", lambda info : info["pinned"]),
     ("fullscreen", lambda info : info["fullscreen"]),
