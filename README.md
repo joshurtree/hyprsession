@@ -31,5 +31,5 @@ This allows the user to save the session config in an alternative location if de
 
 ## TODO
 * Create and use a rules file for alternative handling of awkward applications.
-* Handle programs that create windows in forked processes by creating temporary window rules.
+* Handle application that create windows in forked processes by creating temporary window rules.
 * Save geometry of windows.
