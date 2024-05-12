@@ -33,10 +33,12 @@ def make_lambdas(vals) :
 PROPS = [make_lambdas(val) for val in [
     (lambda info : f"monitor {info['monitor']}", True),
     (lambda info : f"workspace {info['workspace']['id']} silent", True),
-    (lambda : "fullscreenmode " + info["fullscreenmode"], lambda info : info["fullscreen"]),
     ("float", lambda info : info["floating"]),
-    ("pinned", lambda info : info["pinned"]),
+    (lambda info : f"move {info['at']['x']} {info['at']['y']}", lambda info : info["floating"]),
+    (lambda info : f"size {info['size']['width']} {info['size']['height']}", lambda info : info["floating"]),
+    ("pin", lambda info : info["pinned"]),
     ("fullscreen", lambda info : info["fullscreen"]),
+    ("fakefullscreen", lambda info : info["fakefullscreen"])
 ]]
 
 def save_session(session_path) :
