@@ -1,6 +1,7 @@
 #!/usr/bin/python
 #
-# Session saver for Hyprland.
+# Session saver for Hyprland. 
+# (This is an archived version of the original python script)
 #
 # Author: Josh Andrews
 # Version: 0.01
