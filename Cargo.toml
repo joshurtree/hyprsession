@@ -2,8 +2,12 @@
 name = "hyprsession"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+authors = [ "Josh Andrews" ]
+license = "GPL-3.0"
+description = "Saves hyprland sessions"
+readme = "README.md"
+repository = "https://github.com/joshurtree/hyprsession"
+keywords = [ "hyprland", "session", "tools" ]
 
 [dependencies]
 clap = { version = "4.5.4", features = ["derive"] }
