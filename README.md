@@ -26,9 +26,12 @@ Sets the mode the program runs in
 This sets the interval in seconds between session saves. The default is 60 seconds.
 
 ### --session-path
-This allows the user to save the session config in an alternative location if desired. If used then ensure that the path following `source =` above points to the correct location.
+This allows the user to save the session config in an alternative directory, by default its ~/.local/share/hyprsession. 
 
 ## TODO
-* Create and use a rules file for alternative handling of awkward applications.
+* Create and use a rules file for alternative handling of applications (i.e. do not reload, ignore parameters, additional parameters etc).
 * Handle application that create windows in forked processes by creating temporary window rules.
-* Save geometry of windows.
+
+## Change log
+### 0.1.1
+* Changed --session-path option to point at base directory of session file
