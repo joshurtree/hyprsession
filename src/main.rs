@@ -1,11 +1,16 @@
-use std::{env, thread, time};
-use std::fs::create_dir_all;
+use std::{thread, time};
+use std::fs::{create_dir_all, File};
 use std::process::exit;
 //use serde::Deserialize;
 use clap::{Parser, ValueEnum};
+use log::LevelFilter;
+use simplelog::{ColorChoice, TermLogger, TerminalMode };
 
 mod session;
+mod config;
+
 use crate::session::*;
+use crate::config::*;
 
 #[derive(Copy, Clone, Parser, PartialEq, ValueEnum)]
 enum Mode {
@@ -33,34 +38,58 @@ struct Args {
     #[arg(short='i', long)]
     save_interval: Option<u64>,
     
-    /// The path where the session is saved (default: ~/.local/share)
-    #[arg(short='s', long)]
+    /// The path where the session is saved (default: ~/.local/share/hyprsession)
+    #[arg(short, long)]
     session_path: Option<String>,
+
+    /// The path where the config file is held (default: ~/.config/hypr/hyprsession.yaml)
+    #[arg(short, long)]
+    config_path: Option<String>,
 
     /// Only simulate calls to Hyprland (supresses loading of session)
     #[arg(long)]
-    simulate: bool
+    simulate: bool,
+
+    #[arg(short, long)]
+    verbose: bool
 }   
 
 fn main() {
     let args = Args::parse();
+    let term_log_level = if args.verbose { LevelFilter::Trace } else { LevelFilter::Error };
+
+    TermLogger::init(term_log_level, 
+                    simplelog::Config::default(), 
+                    TerminalMode::Mixed, 
+                    ColorChoice::Auto);
+
     let mode = args.mode.unwrap_or(Mode::Default);
-    let save_interval = args.save_interval.unwrap_or(60);
     let simulate = args.simulate;
-    let default_path = env::var("HOME").unwrap() + "/.local/share/hyprsession";
-    let session_path = args.session_path.unwrap_or(default_path);
+    let config_path = 
+        args.config_path.unwrap_or(std::env::var("HOME").unwrap() + "/.config/hypr/hyprsession.yaml");
+    let conf = load_config(&config_path);
+    let session_path = args.session_path.unwrap_or(conf.session_path);
+    let save_interval = args.save_interval.unwrap_or(conf.save_interval);
+
 
     if save_interval < 1 {
-        panic!("Save interval needs to be a positive integer");
+        log::error!("Save interval needs to be a positive integer");
+        exit(-1);
     }
 
-    create_dir_all(&session_path)
-        .expect(&format!("Failed to create session dir: {}", session_path));
+    if !create_dir_all(&session_path).is_ok() {
+        log::error!("Failed to create session dir: {}", session_path);
+        exit(-1);
+    }
 
+    let do_save_session = 
+        || save_session(&session_path, &conf.apps)
+            .map_err(|err| log::error!("Session write error: {}", err))
+            .expect("");
     match mode {
         Mode::Default | Mode::LoadAndExit =>
             load_session(&session_path, simulate),
-        Mode::SaveAndExit | Mode::SaveOnly => save_session(&session_path)
+        Mode::SaveAndExit | Mode::SaveOnly => do_save_session()
     } 
 
     if mode == Mode::LoadAndExit || mode == Mode::SaveAndExit {
@@ -68,7 +97,7 @@ fn main() {
     }
 
     loop {
-        save_session(&session_path);
+        do_save_session();
         thread::sleep(time::Duration::from_secs(save_interval));
     }
 }

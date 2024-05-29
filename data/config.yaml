@@ -1,0 +1,6 @@
+save_interval: 100
+session_path: ~/.local/share/hypr
+apps:
+    discord:
+        ignore_arguments: true
+        single_instance: true

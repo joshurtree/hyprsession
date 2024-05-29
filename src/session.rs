@@ -4,14 +4,18 @@ use std::process::Command;
 
 use hyprland::data::{Client, Clients};
 use hyprland::dispatch::*;
-//use hyprland::keyword;
+use hyprland::keyword::Keyword;
+use hyprland::shared::HyprError;
 //use hyprland::event_listener::EventListener;
 use hyprland::prelude::*;
+
+use crate::{AppConfig, AppConfigs};
 //use hyprland::shared::WorkspaceType;
 
 const EXEC_NAME: &str = "/exec.conf";
+const RULES_NAME: &str = "/windowrules.conf";
 
-fn fetch_command(info: &Client) -> String {
+fn fetch_command(info: &Client, conf: &AppConfig) -> String {
     let output = Command::new("ps")
                     .arg("--no-headers")
                     .arg("-o")
@@ -20,14 +24,21 @@ fn fetch_command(info: &Client) -> String {
                     .arg(format!("{}", info.pid))
                     .output()
                     .expect("Failed to call ps");
-    return String::from_utf8_lossy(&output.stdout).to_string();
+
+    let mut command_and_args = String::from_utf8_lossy(&output.stdout).to_string();
+    command_and_args.pop();
+    let command: Vec<&str> = command_and_args
+            .splitn(2, " ")
+            .collect();
+    //log::debug!("{}", command.join(", "));
+    return command[0].to_owned() + if command.len() == 1 || conf.ignore_arguments { "" } else { command[1] } + &conf.extra_args;
 }
 
 fn run_if(prop: bool, val: &str) -> &str {
     if prop { val } else { "" }
 }
 
-pub fn save_session(base_path: &str) {
+pub fn save_session(base_path: &str, apps: &AppConfigs) -> Result<(), std::io::Error> {
     let base_dir = base_path.to_owned();
     let props = [ 
         |info: &Client| format!("monitor {}", info.monitor),
@@ -41,19 +52,44 @@ pub fn save_session(base_path: &str) {
     ];
 
     let client_info = Clients::get().expect("Unable to fetch clients");
-    
-    let mut exec_file = File::create(base_dir + EXEC_NAME)
-        .expect("Failed to create session file");
+
+    let mut exec_file = File::create(base_dir.clone() + EXEC_NAME)
+        .map_err(|err| log::error!("Failed to create exec file: {}", err))
+        .expect("");
+
+    let mut rules_file = File::create(base_dir.clone() + RULES_NAME)
+        .map_err(|err| log::error!("Failed to create rules file {}", err))
+        .expect("");
+
     for info in client_info.iter() {
-        let exec_opts: Vec<String> = 
-            props
-                .iter()
-                .map(|opt| opt(info))
-                .filter(|opt| !opt.is_empty())
-                .collect();
-        exec_file.write(format!("[{}] {}", exec_opts.join(";"), fetch_command(info)).as_bytes());
+        let defconfig = Default::default();
+        let appconfig: &AppConfig = apps.get(&info.initial_class).unwrap_or(&defconfig);
+
+        if !appconfig.ignore {
+            let exec_opts: Vec<String> = 
+                props
+                    .iter()
+                    .map(|opt| opt(info))
+                    .filter(|opt| !opt.is_empty())
+                    .collect();
+
+            let exec_line = format!("[{}] {}", exec_opts.join(";"), fetch_command(info, appconfig));
+            log::debug!("Adding line to execution file: {}", exec_line);
+            exec_file.write(exec_line.as_bytes())?;
+            exec_file.write(b"\n")?;
+
+            if appconfig.apply_windowrules {
+                for exec_opt in exec_opts {
+                    rules_file.write(format!("windowrule={}, {}", exec_opt, info.initial_class).as_bytes())?;
+                    rules_file.write(b"\n")?;
+                }
+            }
+        } else {
+            log::info!("Ignoring app with initialClass: {}", info.initial_class);
+        }
     }
-    println!("Session saved");
+    log::info!("Session saved");
+    return Ok(());
 }
 
 pub fn load_session(base_path: &String, simulate: bool) {

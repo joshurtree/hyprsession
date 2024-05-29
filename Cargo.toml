@@ -12,5 +12,9 @@ keywords = [ "hyprland", "session", "tools" ]
 [dependencies]
 clap = { version = "4.5.4", features = ["derive"] }
 hyprland = "0.4.0-alpha.2"
+log = "0.4.21"
 serde = { version = "1.0.202", features = ["derive"] }
+serde-inline-default = "0.2.0"
 serde_json = "1.0.117"
+serde_yaml = "0.9.34"
+simplelog = "0.12.2"
