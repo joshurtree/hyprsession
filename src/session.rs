@@ -58,13 +58,14 @@ pub fn save_session(base_path: &str) {
 
 pub fn load_session(base_path: &String, simulate: bool) {
     let base_dir = base_path.to_owned();
-    let session_file = File::open(base_dir + EXEC_NAME)
-        .expect("Failed to open session file.");
+    let session_file = File::open(base_dir + EXEC_NAME);
     
-    for line in read_to_string(session_file).unwrap().lines() {
-        if !simulate {
-            hyprland::dispatch!(Exec, line);
-        } 
-        println!("Sending: dispach exec {}", line);
+    if session_file.is_ok() {
+        for line in read_to_string(session_file.unwrap()).unwrap().lines() {
+            if !simulate {
+                hyprland::dispatch!(Exec, line);
+            } 
+            println!("Sending: dispach exec {}", line);
+        }
     }
 }

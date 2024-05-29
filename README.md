@@ -35,3 +35,5 @@ This allows the user to save the session config in an alternative directory, by 
 ## Change log
 ### 0.1.1
 * Changed --session-path option to point at base directory of session file
+### 0.1.2
+* Fixed bug which would crash program if no session file existed
