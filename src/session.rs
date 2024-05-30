@@ -5,7 +5,6 @@ use std::process::Command;
 use hyprland::data::{Client, Clients};
 use hyprland::dispatch::*;
 use hyprland::keyword::Keyword;
-use hyprland::shared::HyprError;
 //use hyprland::event_listener::EventListener;
 use hyprland::prelude::*;
 
@@ -75,13 +74,11 @@ pub fn save_session(base_path: &str, apps: &AppConfigs) -> Result<(), std::io::E
 
             let exec_line = format!("[{}] {}", exec_opts.join(";"), fetch_command(info, appconfig));
             log::debug!("Adding line to execution file: {}", exec_line);
-            exec_file.write(exec_line.as_bytes())?;
-            exec_file.write(b"\n")?;
+            writeln!(exec_file, "{}\n", exec_line)?;
 
             if appconfig.apply_windowrules {
                 for exec_opt in exec_opts {
-                    rules_file.write(format!("windowrule={}, {}", exec_opt, info.initial_class).as_bytes())?;
-                    rules_file.write(b"\n")?;
+                    writeln!(rules_file, "windowrule={}, {}\n", exec_opt, info.initial_class)?;
                 }
             }
         } else {
@@ -97,9 +94,17 @@ pub fn load_session(base_path: &String, simulate: bool) {
     let session_file = File::open(base_dir + EXEC_NAME);
     
     if session_file.is_ok() {
+        let mut temp_rules_path = std::env::temp_dir();
+        temp_rules_path.push(RULES_NAME);
+        std::fs::copy(base_dir.clone() + RULES_NAME, &temp_rules_path).unwrap();
+
+        if !simulate {
+            Keyword::set("source", temp_rules_path.as_os_str().to_str().unwrap()).unwrap();
+        }
+
         for line in read_to_string(session_file.unwrap()).unwrap().lines() {
             if !simulate {
-                hyprland::dispatch!(Exec, line);
+                hyprland::dispatch!(Exec, line).unwrap();
             } 
             println!("Sending: dispach exec {}", line);
         }
