@@ -1,17 +1,24 @@
 # Hyprsession
 ## Overview
-Implements session saving for Hyprland. While the program is running it periodicly saves the command, workspace and other properties of running clients found by `hyprctl clients`. These are then saved to a file formatted as a Hyprland config file which can then be sourced so that the session is restored when Hyprland is restarted.
+Implements session persistance for Hyprland. While the program is running it periodicly saves the command, workspace and other properties of running clients found by `hyprctl clients`. These are then saved to a file formatted as a Hyprland config file which can then be sourced so that the session is restored when Hyprland is restarted.
 
 ## Installation
 As root run the command 
 ```
-cargo install --root /usr/local/bin hyprsession
+cargo install --root /usr/local hyprsession
 ``` 
-Then add the following line to your Hyprland config file (Usually at ~/.config/hypr/hyprland.conf)
+Or install as a user by replacing `/usr/local` with your home directory. Then add the following line to your Hyprland config file (Usually at ~/.config/hypr/hyprland.conf)
 ```
-exec_once = hyprsession &
+exec_once = hyprsession
 ```
-
+If you want to save a session that is already running then run
+```
+hyprsession --mode save-only &
+```
+or
+```
+hyprsession --mode save-and-exit
+```
 ## Options
 Various options can be used to modify the behavior of Hyprsession.
 
@@ -37,3 +44,5 @@ This allows the user to save the session config in an alternative directory, by 
 * Changed --session-path option to point at base directory of session file
 ### 0.1.2
 * Fixed bug which would crash program if no session file existed
+### 0.1.3
+* Fix fatal bug on Hyprland 0.4 that crashed the program while saving the session  
