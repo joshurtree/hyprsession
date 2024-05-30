@@ -1,6 +1,6 @@
 [package]
 name = "hyprsession"
-version = "1.0.0"
+version = "0.2.0"
 edition = "2021"
 authors = [ "Josh Andrews" ]
 license = "GPL-3.0"
