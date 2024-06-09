@@ -1,8 +1,9 @@
 use std::{thread, time};
-use std::fs::{create_dir_all, File};
+use std::fs::create_dir_all;
+use std::path::Path;
 use std::process::exit;
 //use serde::Deserialize;
-use clap::{Parser, ValueEnum};
+use clap::{Parser, ValueEnum, Subcommand};
 use log::LevelFilter;
 use simplelog::{ColorChoice, TermLogger, TerminalMode };
 
@@ -12,7 +13,7 @@ mod config;
 use crate::session::*;
 use crate::config::*;
 
-#[derive(Copy, Clone, Parser, PartialEq, ValueEnum)]
+#[derive(Copy, Clone, PartialEq, ValueEnum, Subcommand)]
 enum Mode {
     /// Load session then periodicly save session (default)
     Default,
@@ -31,6 +32,10 @@ enum Mode {
 #[command(version, about, long_about = None)]
 struct Args {
     /// Which mode to run the program in
+    #[command(subcommand)]
+    command: Option<Mode>,
+
+    /// Depreciated - Use command instead
     #[arg(short, long)]
     mode: Option<Mode>,
 
@@ -63,12 +68,13 @@ fn main() {
                     TerminalMode::Mixed, 
                     ColorChoice::Auto);
 
-    let mode = args.mode.unwrap_or(Mode::Default);
+    let mode = args.command.unwrap_or(args.mode.unwrap_or(Mode::Default)) ;
     let simulate = args.simulate;
     let config_path = 
         args.config_path.unwrap_or(std::env::var("HOME").unwrap() + "/.config/hypr/hyprsession.yaml");
     let conf = load_config(&config_path);
-    let session_path = args.session_path.unwrap_or(conf.session_path);
+    let default_path = args.session_path.unwrap_or(conf.session_path);
+    let session_path = Path::new(&default_path);
     let save_interval = args.save_interval.unwrap_or(conf.save_interval);
 
 
@@ -78,17 +84,19 @@ fn main() {
     }
 
     if !create_dir_all(&session_path).is_ok() {
-        log::error!("Failed to create session dir: {}", session_path);
+        log::error!("Failed to create session directory: {:?}", session_path);
         exit(-1);
     }
 
     let do_save_session = 
         || save_session(&session_path, &conf.apps)
             .map_err(|err| log::error!("Session write error: {}", err))
-            .expect("");
+            .unwrap();
     match mode {
         Mode::Default | Mode::LoadAndExit =>
-            load_session(&session_path, simulate),
+            load_session(&session_path, simulate)
+                .map_err(|err| log::error!("Session load error: {}", err))
+                .unwrap(),
         Mode::SaveAndExit | Mode::SaveOnly => do_save_session()
     } 
 
