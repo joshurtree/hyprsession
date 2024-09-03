@@ -6,4 +6,4 @@
 /target
 
 # Nix build files
-./result
+result
