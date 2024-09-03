@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::{read_to_string, Write};
 use std::process::Command;
 
-use hyprland::data::{Client, Clients};
+use hyprland::data::{Client, Clients, FullscreenMode};
 use hyprland::dispatch::*;
 //use hyprland::keyword;
 //use hyprland::event_listener::EventListener;
@@ -36,7 +36,7 @@ pub fn save_session(base_path: &str) {
         |info: &Client| format!("move {} {}", info.at.0, info.at.1),  
         |info: &Client| format!("size {} {}", info.size.0, info.size.1), 
         |info: &Client| format!("{}", run_if(info.pinned, "pin")), 
-        // |info: &Client| format!("{}", run_if(info.fullscreen, "fullscreen")), 
+        |info: &Client| format!("{}", format!("fullscreenstate {}", info.fullscreen as i32)), 
         //|info: &Client| format!("{}", run_if(info.fake_fullscreen, "fakefullscreen")) 
     ];
 
