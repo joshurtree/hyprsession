@@ -12,13 +12,14 @@
     flake-utils.lib.eachDefaultSystem (system: let
       pkgs = import nixpkgs {inherit system;};
     in {
-      packages = {
-        default = pkgs.rustPlatform.buildRustPackage {
+      packages = rec {
+        hyprsession = pkgs.rustPlatform.buildRustPackage {
           pname = "hyprsession";
           version = "0.1.4";
           cargoLock.lockFile = ./Cargo.lock;
           src = pkgs.lib.cleanSource ./.;
         };
+        default = hyprsession;
       };
     });
 }

@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::{read_to_string, Write};
 use std::process::Command;
 
-use hyprland::data::{Client, Clients, FullscreenMode};
+use hyprland::data::{Client, Clients};
 use hyprland::dispatch::*;
 //use hyprland::keyword;
 //use hyprland::event_listener::EventListener;
