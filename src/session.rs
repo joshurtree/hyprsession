@@ -36,7 +36,7 @@ pub fn save_session(base_path: &str) {
         |info: &Client| format!("move {} {}", info.at.0, info.at.1),  
         |info: &Client| format!("size {} {}", info.size.0, info.size.1), 
         |info: &Client| format!("{}", run_if(info.pinned, "pin")), 
-        |info: &Client| format!("{}", run_if(info.fullscreen, "fullscreen")), 
+        // |info: &Client| format!("{}", run_if(info.fullscreen, "fullscreen")), 
         //|info: &Client| format!("{}", run_if(info.fake_fullscreen, "fakefullscreen")) 
     ];
 
