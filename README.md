@@ -5,7 +5,7 @@ Implements session persistance for Hyprland. While the program is running it per
 ## Installation
 As root run the command 
 ```
-cargo install --root /usr/local hyprsession
+cargo install --locked --root /usr/local --git https://github.com/tiecia/hyprsession
 ``` 
 Or install as a user by replacing `/usr/local` with your home directory. Then add the following line to your Hyprland config file (Usually at ~/.config/hypr/hyprland.conf)
 ```
@@ -23,7 +23,7 @@ hyprsession --mode save-and-exit
 #### NixOS
 Add the input to your `flake.nix`
 ```
-hyprsession.url = "github:joshurtree/hyprsession"
+hyprsession.url = "github:tiecia/hyprsession"
 ```
 To automatically run it with home-manager add the following to your `home.nix` hyprland configuration
 ```
@@ -60,3 +60,5 @@ This allows the user to save the session config in an alternative directory, by 
 ### 0.1.4
 * Changed fullscreen dispatcher to use fullscreenmode and fixed FullscreenMode type issue (#2)
 * Updated to latest alpha version of hyprland crate. Fixes panic on fetching clients (#1)
+### 0.1.5
+* Added accurate README instructions for installation
