@@ -9,7 +9,7 @@ cargo install --root /usr/local hyprsession
 ``` 
 Or install as a user by replacing `/usr/local` with your home directory. Then add the following line to your Hyprland config file (Usually at ~/.config/hypr/hyprland.conf)
 ```
-exec_once = hyprsession
+exec-once = hyprsession
 ```
 If you want to save a session that is already running then run
 ```
