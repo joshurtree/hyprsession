@@ -19,6 +19,17 @@ or
 ```
 hyprsession --mode save-and-exit
 ```
+
+#### NixOS
+Add the input to your `flake.nix`
+```
+hyprsession.url = "github:joshurtree/hyprsession"
+```
+To automatically run it with home-manager add the following to your `home.nix` hyprland configuration
+```
+exec-once = "${inputs.hyprsession.packages.${pkgs.system}.hyprsession}/bin/hyprsession"
+```
+
 ## Options
 Various options can be used to modify the behavior of Hyprsession.
 
@@ -46,3 +57,6 @@ This allows the user to save the session config in an alternative directory, by 
 * Fixed bug which would crash program if no session file existed
 ### 0.1.3
 * Fix fatal bug on Hyprland 0.4 that crashed the program while saving the session  
+### 0.1.4
+* Changed fullscreen dispatcher to use fullscreenmode and fixed FullscreenMode type issue (#2)
+* Updated to latest alpha version of hyprland crate. Fixes panic on fetching clients (#1)
