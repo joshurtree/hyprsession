@@ -9,7 +9,7 @@ cargo install --root /usr/local hyprsession
 ``` 
 Or install as a user by replacing `/usr/local` with your home directory. Then add the following line to your Hyprland config file (Usually at ~/.config/hypr/hyprland.conf)
 ```
-exec_once = hyprsession
+exec-once = hyprsession
 ```
 If you want to save a session that is already running then run
 ```
@@ -60,3 +60,4 @@ This allows the user to save the session config in an alternative directory, by 
 ### 0.1.4
 * Changed fullscreen dispatcher to use fullscreenmode and fixed FullscreenMode type issue (#2)
 * Updated to latest alpha version of hyprland crate. Fixes panic on fetching clients (#1)
+
