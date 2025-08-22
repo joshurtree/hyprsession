@@ -1,10 +1,12 @@
 on:
-    push:
-      tags:
-        - '*'
-  
+  push:
+    branches:
+      - main
+    paths:
+      - 'Cargo.toml'
+      - '.github/workflows/publish.yml'
+
 name: Publish
-  
 jobs:
   audit:
     name: Audit
