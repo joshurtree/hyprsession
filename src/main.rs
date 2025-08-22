@@ -33,6 +33,10 @@ struct Args {
     #[arg(short='i', long)]
     save_interval: Option<u64>,
     
+    /// Time until the session is loaded (default: 60 seconds)
+    #[arg(short='l', long)]
+    load_time: Option<u64>,
+
     /// The path where the session is saved (default: ~/.local/share)
     #[arg(short='s', long)]
     session_path: Option<String>,
@@ -46,6 +50,7 @@ fn main() {
     let args = Args::parse();
     let mode = args.mode.unwrap_or(Mode::Default);
     let save_interval = args.save_interval.unwrap_or(60);
+    let load_time = args.load_time.unwrap_or(60);
     let simulate = args.simulate;
     let default_path = env::var("HOME").unwrap() + "/.local/share/hyprsession";
     let session_path = args.session_path.unwrap_or(default_path);
@@ -58,12 +63,13 @@ fn main() {
         .expect(&format!("Failed to create session dir: {}", session_path));
 
     match mode {
-        Mode::Default | Mode::LoadAndExit =>
-            load_session(&session_path, simulate),
+        Mode::Default | Mode::LoadAndExit => 
+            load_session(&session_path, load_time, simulate),
         Mode::SaveAndExit | Mode::SaveOnly => save_session(&session_path)
-    } 
+    };
 
     if mode == Mode::LoadAndExit || mode == Mode::SaveAndExit {
+        println!("Session loaded, exiting");
         exit(0);
     }
 
