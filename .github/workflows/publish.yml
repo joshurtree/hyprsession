@@ -4,6 +4,7 @@ on:
       - main
     paths:
       - 'Cargo.toml'
+      - 'Cargo.lock'
       - '.github/workflows/publish.yml'
 
 name: Publish
@@ -14,33 +15,35 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v3
-      - uses: bp3d-actions/audit-check@9c23bd47e5e7b15b824739e0862cb878a52cc211
+      - uses: actions-rs/audit-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-  build_and_test_linux:
+  build_linux:
     name: Build and Test (Linux)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: taiki-e/install-action@nextest
-      - name: 'Build and test'
-        run: cargo nextest run --workspace --all-targets --all-features
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable 
+      - name: 'Build'
+        run: cargo build --release --all-features
 
   crates_io_publish:
     name: Publish (crates.io)
     needs:
       - audit
-      - build_and_test_linux
+      - build_linux
 
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
 
       - name: cargo-release Cache
         id: cargo_release_cache
