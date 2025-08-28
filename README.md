@@ -2,15 +2,37 @@
 ## Overview
 Implements session persistance for Hyprland. While the program is running it periodicly saves the command, workspace and other properties of running clients found by `hyprctl clients`. These are then saved to a file formatted as a Hyprland config file which can then be sourced so that the session is restored when Hyprland is restarted.
 
+<a href="https://www.buymeacoffee.com/joshurtree" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-red.png" alt="Buy Me A Coffee" height="41" width="174"></a>
+
 ## Installation
+#### Manual
 As root run the command 
 ```
 cargo install --root /usr/local hyprsession
 ``` 
-Or install as a user by replacing `/usr/local` with your home directory. Then add the following line to your Hyprland config file (Usually at ~/.config/hypr/hyprland.conf)
+Or install as a user by replacing `/usr/local` with your home directory. 
+
+#### Arch Linux
+Hyprsession can be installed via the AUR. By either running your aur package manager of choice or manually by running
+```
+git clone https://aur.archlinux.org/hyprsession.git
+cd hyprsession
+makepkg -i
+```
+#### NixOS
+Add the input to your `flake.nix`
+```
+hyprsession.url = "github:joshurtree/hyprsession"
+```
+
+Then either add the package to your `configuration.nix` or use `${inputs.hyprsession.packages.${pkgs.system}.hyprsession}/bin/hyprsession` in place of `hyprsession` to run the program.
+
+## Usage
+To automaticly run the program in future sessions add the following line to your Hyprland config file (Usually at ~/.config/hypr/hyprland.conf)
 ```
 exec-once = hyprsession
 ```
+The same line can be added to your `home.nix` hyprland configuration if your are using Nix Home Manager.
 If you want to save a session that is already running then run
 ```
 hyprsession --mode save-only &
@@ -18,16 +40,6 @@ hyprsession --mode save-only &
 or
 ```
 hyprsession --mode save-and-exit
-```
-
-#### NixOS
-Add the input to your `flake.nix`
-```
-hyprsession.url = "github:joshurtree/hyprsession"
-```
-To automatically run it with home-manager add the following to your `home.nix` hyprland configuration
-```
-exec-once = "${inputs.hyprsession.packages.${pkgs.system}.hyprsession}/bin/hyprsession"
 ```
 
 ## Options
@@ -61,3 +73,9 @@ This allows the user to save the session config in an alternative directory, by 
 * Changed fullscreen dispatcher to use fullscreenmode and fixed FullscreenMode type issue (#2)
 * Updated to latest alpha version of hyprland crate. Fixes panic on fetching clients (#1)
 
+### Thanks
+
+Thank you to the following people for helping to improve this project
+
+* Tie C (ticia)
+* Isaac Hesslegrave (HeadedBranch)
