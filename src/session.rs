@@ -27,7 +27,7 @@ fn run_if(prop: bool, val: &str) -> &str {
     if prop { val } else { "" }
 }
 
-pub fn save_session(base_path: &str, skip_duplicate_pids: bool) {
+pub fn save_session(base_path: &str, save_duplicate_pids: bool) {
     let base_dir = base_path.to_owned();
     let props = [ 
         |info: &Client| format!("monitor {}", info.monitor),
@@ -47,7 +47,7 @@ pub fn save_session(base_path: &str, skip_duplicate_pids: bool) {
     let mut pids: Vec<i32> = vec![];
 
     for info in client_info.iter() {
-        if skip_duplicate_pids && pids.contains(&info.pid) {
+        if !save_duplicate_pids && pids.contains(&info.pid) {
             continue;
         }
         pids.push(info.pid);

@@ -29,9 +29,9 @@ struct Args {
     #[arg(short, long)]
     mode: Option<Mode>,
 
-    /// Whether to ignore multiple clients with the same PID
-    #[arg(long, default_value_t = true)]
-    skip_duplicate_pids: bool,
+    /// Whether to store multiple clients owned by the same application
+    #[arg(long, default_value_t = false)]
+    save_duplicate_pids: bool,
 
     /// Interval between saving sessions (default: 60)
     #[arg(short='i', long)]
@@ -65,7 +65,7 @@ fn main() {
         Mode::Default | Mode::LoadAndExit =>
             load_session(&session_path, simulate),
         Mode::SaveAndExit | Mode::SaveOnly => 
-            save_session(&session_path, args.skip_duplicate_pids),
+            save_session(&session_path, args.save_duplicate_pids),
     }
 
     if mode == Mode::LoadAndExit || mode == Mode::SaveAndExit {
@@ -73,7 +73,7 @@ fn main() {
     }
 
     loop {
-        save_session(&session_path, args.skip_duplicate_pids);
+        save_session(&session_path, args.save_duplicate_pids);
         thread::sleep(time::Duration::from_secs(save_interval));
     }
 }
