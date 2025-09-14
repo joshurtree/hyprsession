@@ -29,6 +29,10 @@ struct Args {
     #[arg(short, long)]
     mode: Option<Mode>,
 
+    /// Whether to ignore multiple clients with the same PID
+    #[arg(long, default_value_t = true)]
+    skip_duplicate_pids: bool,
+
     /// Interval between saving sessions (default: 60)
     #[arg(short='i', long)]
     save_interval: Option<u64>,
@@ -38,7 +42,7 @@ struct Args {
     session_path: Option<String>,
 
     /// Only simulate calls to Hyprland (supresses loading of session)
-    #[arg(long)]
+    #[arg(long, default_value_t = false)]
     simulate: bool
 }   
 
@@ -60,15 +64,16 @@ fn main() {
     match mode {
         Mode::Default | Mode::LoadAndExit =>
             load_session(&session_path, simulate),
-        Mode::SaveAndExit | Mode::SaveOnly => save_session(&session_path)
-    } 
+        Mode::SaveAndExit | Mode::SaveOnly => 
+            save_session(&session_path, args.skip_duplicate_pids),
+    }
 
     if mode == Mode::LoadAndExit || mode == Mode::SaveAndExit {
         exit(0);
     }
 
     loop {
-        save_session(&session_path);
+        save_session(&session_path, args.skip_duplicate_pids);
         thread::sleep(time::Duration::from_secs(save_interval));
     }
 }
