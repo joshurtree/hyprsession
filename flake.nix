@@ -15,7 +15,7 @@
       packages = rec {
         hyprsession = pkgs.rustPlatform.buildRustPackage {
           pname = "hyprsession";
-          version = "0.1.4";
+          version = "0.1.5";
           cargoLock.lockFile = ./Cargo.lock;
           src = pkgs.lib.cleanSource ./.;
         };
