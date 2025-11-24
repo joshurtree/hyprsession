@@ -31,7 +31,13 @@ pub fn save_session(base_path: &str, skip_duplicate_pids: bool) {
     let base_dir = base_path.to_owned();
     let props = [ 
         |info: &Client| format!("monitor {:?}", info.monitor),
-        |info: &Client| format!("workspace {} silent", info.workspace.id), 
+        |info: &Client| {
+            if info.workspace.id == -99 {
+                format!("workspace special silent")
+            } else {
+                format!("workspace {} silent", info.workspace.id)
+            }
+        }, 
         |info: &Client| format!("{}", run_if(info.floating, "float")),
         |info: &Client| format!("move {} {}", info.at.0, info.at.1),  
         |info: &Client| format!("size {} {}", info.size.0, info.size.1), 
