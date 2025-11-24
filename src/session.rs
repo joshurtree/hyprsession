@@ -30,7 +30,7 @@ fn run_if(prop: bool, val: &str) -> &str {
 pub fn save_session(base_path: &str, skip_duplicate_pids: bool) {
     let base_dir = base_path.to_owned();
     let props = [ 
-        |info: &Client| format!("monitor {}", info.monitor),
+        |info: &Client| format!("monitor {:?}", info.monitor),
         |info: &Client| {
             if info.workspace.id == -99 {
                 format!("workspace special silent")
