@@ -1,25 +1,25 @@
-use std::{env, thread, time};
 use std::fs::create_dir_all;
 use std::process::exit;
+use std::{env, thread, time};
 //use serde::Deserialize;
 use clap::{Parser, ValueEnum};
 
-mod session;
+pub mod session;
 use crate::session::*;
 
 #[derive(Copy, Clone, Parser, PartialEq, ValueEnum)]
 enum Mode {
     /// Load session then periodicly save session (default)
     Default,
-    
-    /// Periodicly save the session 
+
+    /// Periodicly save the session
     SaveOnly,
 
     /// Save the session once then exit
     SaveAndExit,
 
     /// Load the session then exit
-    LoadAndExit
+    LoadAndExit,
 }
 
 #[derive(Parser)]
@@ -34,17 +34,17 @@ struct Args {
     save_duplicate_pids: bool,
 
     /// Interval between saving sessions (default: 60)
-    #[arg(short='i', long)]
+    #[arg(short = 'i', long)]
     save_interval: Option<u64>,
-    
+
     /// The path where the session is saved (default: ~/.local/share)
-    #[arg(short='s', long)]
+    #[arg(short = 's', long)]
     session_path: Option<String>,
 
     /// Only simulate calls to Hyprland (supresses loading of session)
     #[arg(long, default_value_t = false)]
-    simulate: bool
-}   
+    simulate: bool,
+}
 
 fn main() {
     let args = Args::parse();
@@ -58,14 +58,11 @@ fn main() {
         panic!("Save interval needs to be a positive integer");
     }
 
-    create_dir_all(&session_path)
-        .expect(&format!("Failed to create session dir: {}", session_path));
+    create_dir_all(&session_path).expect(&format!("Failed to create session dir: {session_path}"));
 
     match mode {
-        Mode::Default | Mode::LoadAndExit =>
-            load_session(&session_path, simulate),
-        Mode::SaveAndExit | Mode::SaveOnly => 
-            save_session(&session_path, args.save_duplicate_pids),
+        Mode::Default | Mode::LoadAndExit => load_session(&session_path, simulate),
+        Mode::SaveAndExit | Mode::SaveOnly => save_session(&session_path, args.save_duplicate_pids),
     }
 
     if mode == Mode::LoadAndExit || mode == Mode::SaveAndExit {
@@ -77,4 +74,3 @@ fn main() {
         thread::sleep(time::Duration::from_secs(save_interval));
     }
 }
-    

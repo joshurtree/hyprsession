@@ -11,15 +11,15 @@
   }:
     flake-utils.lib.eachDefaultSystem (system: let
       pkgs = import nixpkgs {inherit system;};
+      manifest = (pkgs.lib.importTOML ./Cargo.toml).package;
     in {
       packages = rec {
-        hyprsession = pkgs.rustPlatform.buildRustPackage {
-          pname = "hyprsession";
-          version = "0.1.5";
+        default = pkgs.rustPlatform.buildRustPackage {
+          pname = manifest.name;
+          version = manifest.version;
           cargoLock.lockFile = ./Cargo.lock;
           src = pkgs.lib.cleanSource ./.;
         };
-        default = hyprsession;
       };
     });
 }

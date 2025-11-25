@@ -1,6 +1,6 @@
 [package]
 name = "hyprsession"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2021"
 authors = [ "Josh Andrews" ]
 license = "GPL-3.0"
@@ -11,6 +11,18 @@ keywords = [ "hyprland", "session", "tools" ]
 
 [dependencies]
 clap = { version = "4.5.16", features = ["derive"] }
-hyprland = "0.4.0-alpha.3"
+hyprland = "0.4.0-beta.3"
+regex = "1.12.2"
 serde = { version = "1.0.209", features = ["derive"] }
 serde_json = "1.0.127"
+
+[dev-dependencies]
+tempfile = "3.8"
+
+[[bin]]
+name = "hyprsession"
+path = "src/main.rs"
+
+[lib]
+name = "hyprsession"
+path = "src/lib.rs"
