@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  hyprsession-dev:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - ..:/workspace:cached
+      - hyprsession-cargo-registry:/usr/local/cargo/registry
+    working_dir: /workspace
+    environment:
+      - RUST_BACKTRACE=1
+      - CARGO_TARGET_DIR=/workspace/target
+    cap_add:
+      - SYS_PTRACE
+    stdin_open: true
+    tty: true
+    command: sleep infinity
+
+volumes:
+  hyprsession-cargo-registry:

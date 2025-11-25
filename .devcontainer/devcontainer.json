@@ -1,0 +1,71 @@
+{
+  "name": "Hyprsession Rust Development",
+  "image": "mcr.microsoft.com/devcontainers/rust:1-1-bullseye",
+  
+  // Features to add to the dev container
+  "features": {
+    "ghcr.io/devcontainers/features/nix:1": {
+      "multiUser": false,
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/git:1": {
+      "ppa": true,
+      "version": "latest"
+    }
+  },
+
+  // Configure tool-specific properties
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml",
+        "vadimcn.vscode-lldb",
+        "serayuzgur.crates",
+        "jnoortheen.nix-ide",
+        "ms-vscode.makefile-tools",
+        "GitHub.copilot",
+        "GitHub.copilot-chat"
+      ],
+      "settings": {
+        "rust-analyzer.checkOnSave.command": "clippy",
+        "rust-analyzer.cargo.features": "all",
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "rust-lang.rust-analyzer",
+        "[nix]": {
+          "editor.tabSize": 2
+        }
+      }
+    }
+  },
+
+  // Use 'forwardPorts' to make a list of ports inside the container available locally
+  "forwardPorts": [],
+
+  // Use 'postCreateCommand' to run commands after the container is created
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+
+  // Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root
+  "remoteUser": "vscode",
+
+  // Keep container running after VS Code shuts down
+  "shutdownAction": "stopContainer",
+
+  // Mount the workspace folder
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+
+  // Configure container environment
+  "containerEnv": {
+    "RUST_BACKTRACE": "1",
+    "CARGO_TARGET_DIR": "/workspace/target"
+  },
+
+  // Add capability for debugging
+  "capAdd": ["SYS_PTRACE"],
+
+  // Mount cargo registry for faster builds
+  "mounts": [
+    "source=hyprsession-cargo-registry,target=/usr/local/cargo/registry,type=volume"
+  ]
+}
