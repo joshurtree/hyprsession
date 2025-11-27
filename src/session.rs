@@ -29,41 +29,42 @@ fn fetch_command(info: &Client) -> String {
     if output.stdout.is_empty() {
         return String::from("unknown");
     }
+    
     let command = String::from_utf8_lossy(&output.stdout).to_string();
+    let re = Regex::new(r"(?<path>.*)\.(?<command>.+)-wrapped\s+(?<args>.+)").unwrap();
 
-    let re = Regex::new(r"(?<path>.*)\.(?<command>.+)-wrapped").unwrap();
     if let Some(captures) = re.captures(&command) {
+        // Handle wrapped commands
         captures.name("path").unwrap().as_str().to_string()
             + captures.name("command").unwrap().as_str()
+            + " "
+            + captures.name("args").unwrap().as_str()
             + "\n"
     } else {
         command.trim().to_string() + "\n"
     }
 }
 
-fn iif<'a>(prop: bool, val: &'a str, alt: &'a str) -> &'a str {
-    if prop {
-        val
-    } else {
-        alt
-    }
+macro_rules! iif {
+    ($prop:expr, $val:expr) => {
+        if $prop { $val } else { "" }
+    };
+    ($prop:expr, $val:expr, $alt:expr) => {
+        if $prop { $val } else { $alt }
+    };
 }
 
 pub fn save_session(base_path: &str, save_duplicate_pids: bool) {
     let base_dir = base_path.to_owned();
     let props = [
-        |info: &Client| format!("monitor {:?}", info.monitor),
-        |info: &Client| format!("workspace {} silent",
-            iif(
-                info.workspace.id == -99,
-                "special",
-                stringify!(info.workspace.id)
-            )
-        ),
-        |info: &Client| format!("{}", iif(info.floating, "float", "")),
+        |info: &Client| format!("monitor {:?}", info.monitor.unwrap_or(0)),
+        |info: &Client| iif!(info.workspace.id == -99,
+                             format!("workspace special silent"),
+                             format!("workspace {} silent", info.workspace.id)),
+        |info: &Client| format!("{}", iif!(info.floating, "float")),
         |info: &Client| format!("move {} {}", info.at.0, info.at.1),
         |info: &Client| format!("size {} {}", info.size.0, info.size.1),
-        |info: &Client| format!("{}", iif(info.pinned, "pin", "")),
+        |info: &Client| format!("{}", iif!(info.pinned, "pin")),
         |info: &Client| format!("fullscreenstate {}", info.fullscreen as i32),
         //|info: &Client| iif!(info.fake_fullscreen, "fakefullscreen", "")
     ];

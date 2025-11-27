@@ -20,6 +20,10 @@
           cargoLock.lockFile = ./Cargo.lock;
           src = pkgs.lib.cleanSource ./.;
         };
+
+        devShell = pkgs.mkShell {
+          nativeBuildInputs = [ pkgs.rustc pkgs.cargo ];
+        };
       };
     });
 }
