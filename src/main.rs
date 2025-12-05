@@ -5,9 +5,10 @@ use std::{env, thread, time};
 use clap::{Parser, ValueEnum};
 
 pub mod session;
+pub mod command_detection;
 use crate::session::*;
 
-#[derive(Copy, Clone, Parser, PartialEq, ValueEnum)]
+#[derive(Copy, Clone, PartialEq, ValueEnum)]
 enum Mode {
     /// Load session then periodicly save session (default)
     Default,
@@ -25,8 +26,7 @@ enum Mode {
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 struct Args {
-    /// Which mode to run the program in
-    #[arg(short, long)]
+    /// Which mode to run the program in (default: default)
     mode: Option<Mode>,
 
     /// Whether to store multiple clients owned by the same application

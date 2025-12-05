@@ -7,10 +7,65 @@ on:
 
 name: Publish
 jobs:
+  check_context_tokens:
+    name: Check Required Context Tokens
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify Required Secrets and Variables
+        run: |
+          echo "🔍 Checking required context tokens..."
+          
+          # Required secrets for crates.io publishing
+          if [ -z "${{ secrets.CRATES_IO_API_TOKEN }}" ]; then
+            echo "❌ CRATES_IO_API_TOKEN secret is missing"
+            exit 1
+          else
+            echo "✅ CRATES_IO_API_TOKEN secret is present"
+          fi
+          
+          # Required secrets for AUR publishing
+          if [ -z "${{ secrets.AUR_USERNAME }}" ]; then
+            echo "❌ AUR_USERNAME secret is missing"
+            exit 1
+          else
+            echo "✅ AUR_USERNAME secret is present"
+          fi
+          
+          if [ -z "${{ secrets.AUR_EMAIL }}" ]; then
+            echo "❌ AUR_EMAIL secret is missing"
+            exit 1
+          else
+            echo "✅ AUR_EMAIL secret is present"
+          fi
+          
+          if [ -z "${{ secrets.AUR_SSH_PRIVATE_KEY }}" ]; then
+            echo "❌ AUR_SSH_PRIVATE_KEY secret is missing"
+            exit 1
+          else
+            echo "✅ AUR_SSH_PRIVATE_KEY secret is present"
+          fi
+          
+          # Required default token (should always exist)
+          if [ -z "${{ secrets.GITHUB_TOKEN }}" ]; then
+            echo "❌ GITHUB_TOKEN secret is missing"
+            exit 1
+          else
+            echo "✅ GITHUB_TOKEN secret is present"
+          fi
+          
+          # Optional variables (will use defaults if not set)
+          echo "📋 Checking optional variables..."
+          echo "CRATES_IO_INITIAL_WAIT: ${{ vars.CRATES_IO_INITIAL_WAIT || 'not set (will use default: 180)' }}"
+          echo "CRATES_IO_RETRY_WAIT: ${{ vars.CRATES_IO_RETRY_WAIT || 'not set (will use default: 60)' }}"
+          
+          echo "✅ All required context tokens are present!"
+
   audit:
     name: Audit
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    needs: check_context_tokens
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/audit-check@v1
@@ -21,6 +76,7 @@ jobs:
     name: Build and Test (Linux)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    needs: check_context_tokens
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
@@ -32,6 +88,7 @@ jobs:
   add_version_tag:
     name: Add Version Tag
     needs:
+      - check_context_tokens
       - build_linux
 
     runs-on: ubuntu-latest
@@ -55,6 +112,7 @@ jobs:
   crates_io_publish:
     name: Publish (crates.io)
     needs:
+      - check_context_tokens
       - audit
       - build_linux
       - add_version_tag

@@ -35,17 +35,17 @@ exec-once = hyprsession
 The same line can be added to your `home.nix` hyprland configuration if your are using Nix Home Manager.
 If you want to save a session that is already running then run
 ```
-hyprsession --mode save-only &
+hyprsession save-only &
 ```
 or
 ```
-hyprsession --mode save-and-exit
+hyprsession save-and-exit
 ```
 
 ## Options
 Various options can be used to modify the behavior of Hyprsession.
 
-### --mode <mode>
+### <mode>
 Sets the mode the program runs in 
 * Default - Loads the session at startup the saves the current session at regular intervals.
 * SaveOnly - As above but skips loading the session

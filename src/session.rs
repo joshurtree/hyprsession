@@ -1,49 +1,12 @@
 use hyprland::data::{Client, Clients};
 use hyprland::prelude::*;
-use regex::Regex;
 use std::fs::File;
 use std::io::{read_to_string, Write};
-use std::process::Command;
+use crate::command_detection::fetch_command;
 
 const EXEC_NAME: &str = "/exec.conf";
 
-fn fetch_command(info: &Client) -> String {
-    let output = Command::new("ps")
-        .arg("--no-headers")
-        .arg("-o")
-        .arg("cmd")
-        .arg("-p")
-        .arg(format!("{}", info.pid))
-        .output()
-        .expect("Failed to call ps");
-    let status = output.status;
 
-    if !status.success() {
-        eprintln!(
-            "Failed to fetch command for PID {}: {}",
-            info.pid,
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-
-    if output.stdout.is_empty() {
-        return String::from("unknown");
-    }
-    
-    let command = String::from_utf8_lossy(&output.stdout).to_string();
-    let re = Regex::new(r"(?<path>.*)\.(?<command>.+)-wrapped\s+(?<args>.+)").unwrap();
-
-    if let Some(captures) = re.captures(&command) {
-        // Handle wrapped commands
-        captures.name("path").unwrap().as_str().to_string()
-            + captures.name("command").unwrap().as_str()
-            + " "
-            + captures.name("args").unwrap().as_str()
-            + "\n"
-    } else {
-        command.trim().to_string() + "\n"
-    }
-}
 
 macro_rules! iif {
     ($prop:expr, $val:expr) => {
@@ -104,3 +67,6 @@ pub fn load_session(base_path: &String, simulate: bool) {
         }
     }
 }
+
+
+
