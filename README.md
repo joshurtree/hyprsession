@@ -58,10 +58,6 @@ This sets the interval in seconds between session saves. The default is 60 secon
 ### --session-path
 This allows the user to save the session config in an alternative directory, by default its ~/.local/share/hyprsession. 
 
-## TODO
-* Create and use a rules file for alternative handling of applications (i.e. do not reload, ignore parameters, additional parameters etc).
-* Handle application that create windows in forked processes by creating temporary window rules.
-
 ## Change log
 ### 0.1.1
 * Changed --session-path option to point at base directory of session file
@@ -78,6 +74,38 @@ This allows the user to save the session config in an alternative directory, by 
 ### 0.1.6
 * Handle special workspaces properly
 * Handle wrapped programs in Nixos
+### 0.2.0
+* Breaking change: Remove the need to use '--mode' to specify what mode to launch the program in
+* Improve method of finding originating command for clients
+* Track client creation to better place them
+
+## Testing
+
+Hyprsession includes comprehensive integration tests that run in a NixOS VM environment. These tests verify that session save/restore functionality works correctly with real applications.
+
+### Running Tests
+
+```bash
+cd tests
+./run-test.sh
+```
+
+This will:
+1. Build a NixOS VM with Hyprland and hyprsession
+2. Start test applications (Firefox, terminal, calculator, etc.)
+3. Save a session with `hyprsession save`
+4. Clear the workspace and restore with `hyprsession load`  
+5. Compare before/after states and report results
+
+Test results are saved to `tests/test-results/` with detailed comparison data.
+
+For manual testing:
+```bash
+cd tests
+./run-test.sh vm  # Start VM for manual testing
+```
+
+See `tests/README.md` for detailed testing documentation.
 
 ## Thanks
 

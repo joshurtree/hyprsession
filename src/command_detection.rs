@@ -1,7 +1,8 @@
 use regex::Regex;
 use std::fs;
 use std::process::Command;
-use hyprland::data::Client;
+use hyprland::data::{Clients, Client};
+use hyprland::shared::HyprData;
 
 /// Extract the binary name from a command string
 pub fn extract_binary_name(command: &str) -> &str {
@@ -148,12 +149,12 @@ pub fn fetch_command(client: &Client) -> String {
     
     // Method 3: Fall back to client.class (final fallback)
     if !client.class.is_empty() {
-        return client.class.to_lowercase();
+        return client.initial_class.to_lowercase();
     }
     
     // Last resort: use client title
     if !client.title.is_empty() {
-        return client.title.to_lowercase();
+        return client.initial_title.to_lowercase();
     }
     
     "unknown".to_string()
@@ -218,8 +219,25 @@ mod tests {
         let result = handle_snap(cmd).unwrap();
         assert_eq!(result, "firefox");
     }
-    
+ 
     #[test]
+    #[ignore] // Requires Bitwarden to be running (not yet implemented)
+    fn test_handle_bitwarden() {
+        let pid = Command::new("pgrep")
+            .arg("-o")
+            .arg("electron")
+            .output()
+            .expect("Failed to execute pgrep")
+            .stdout;
+        let client = Clients::get().expect("Unable to fetch clients")
+                                .into_iter()
+                                .find(|c| c.initial_class.to_string() == "Bitwarden")
+                                .expect("Bitwarden client not found");
+        assert_eq!(fetch_command(&client), "bitwarden");
+    }
+
+    #[test]
+    #[ignore] // Weird bug when running as a nix flake
     fn test_command_exists_in_path() {
         // These commands should typically exist on most Linux systems
         assert!(command_exists_in_path("ls"));

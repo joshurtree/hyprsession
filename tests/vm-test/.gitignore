@@ -1,0 +1,21 @@
+# Test artifacts and generated files
+test-results/
+result
+result-*
+
+# Nix build artifacts  
+.direnv/
+.envrc
+
+# VM temporary files
+*.qcow2
+*.img
+vm-state-*
+
+# Log files
+*.log
+logs/
+
+# Temporary directories
+tmp/
+temp/

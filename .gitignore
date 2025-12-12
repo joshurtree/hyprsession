@@ -4,3 +4,24 @@
 
 # Nix build files
 result
+
+# Test artifacts and generated files
+**/vm-test/test-results/
+**/vm-test/vm-result
+
+# Nix build artifacts
+**/vm-test/.direnv/
+**/vm-test/.envrc
+
+# VM temporary files
+**/vm-test/*.qcow2
+**/vm-test/*.img
+**/vm-test/vm-state-*
+
+# Log files
+**/vm-test/*.log
+**/vm-test/logs/
+
+# Temporary directories
+**/vm-test/tmp/
+**/vm-test/temp/

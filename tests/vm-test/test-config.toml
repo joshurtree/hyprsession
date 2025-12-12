@@ -1,0 +1,70 @@
+# Hyprsession Integration Test Configuration
+# This file allows customization of the test behavior
+
+# Test Applications Configuration
+# These applications will be started during the test
+[applications]
+# Core applications (always tested)
+firefox = { command = "firefox --new-instance --profile /tmp/firefox-test", wait_time = 3 }
+terminal = { command = "kitty", wait_time = 2 }
+calculator = { command = "gnome-calculator", wait_time = 2 }
+
+# Optional applications (tested if available)
+flatpak_firefox = { command = "flatpak run org.mozilla.firefox --new-instance", wait_time = 3, optional = true }
+text_editor = { command = "gedit", wait_time = 2, optional = true }
+
+# Test Timing Configuration
+[timing]
+# Time to wait for Hyprland to be ready (seconds)
+hyprland_startup = 5
+
+# Time to wait after loading applications before saving session (seconds)
+app_settle_time = 5
+
+# Time to wait after loading session before capturing state (seconds)  
+session_load_wait = 10
+
+# Time to wait between closing windows (seconds)
+cleanup_delay = 2
+
+# VM Configuration
+[vm]
+# Memory allocation for test VM (MB)
+memory_size = 4096
+
+# CPU cores for test VM
+cpu_cores = 4
+
+# Display resolution
+display_width = 1920
+display_height = 1080
+
+# Test Session Configuration
+[session]
+# Name of the test session
+name = "integration-test-session"
+
+# Whether to clean up session after test
+cleanup_after_test = true
+
+# Comparison Configuration
+[comparison]
+# Whether to compare full client data or just application classes
+compare_mode = "classes"  # Options: "full", "classes", "minimal"
+
+# Whether to ignore window positions and sizes in comparison
+ignore_geometry = true
+
+# Whether to ignore workspace assignments in comparison
+ignore_workspaces = false
+
+# Logging Configuration
+[logging]
+# Log level for test output
+level = "info"  # Options: "debug", "info", "warn", "error"
+
+# Whether to save detailed logs to files
+save_logs = true
+
+# Whether to keep VM logs after test
+keep_vm_logs = false
