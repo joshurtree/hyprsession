@@ -3,6 +3,8 @@ let
   # Test script that will run inside the VM
   testScript = pkgs.writeShellScriptBin "hyprsession-test" ''
     set -e
+
+    RESULT_DIR="/shared/test-results"
     
     # Wait for Hyprland to be ready
     sleep 5
@@ -14,10 +16,7 @@ let
     fi
     
     echo "=== Starting Hyprsession Integration Test ==="
-    
-    # Create test output directory
-    mkdir -p /shared/test-results
-    
+        
     # Check if a session already exists
     if hyprsession list | grep -q "test-session"; then
       echo "Found existing test session, cleaning up..."
@@ -28,7 +27,7 @@ let
     
     # Start Firefox
     echo "Starting Firefox..."
-    firefox --new-instance --profile /tmp/firefox-test &
+    firefox &
     sleep 3
     
     # Start a Flatpak application (if available)
@@ -54,12 +53,12 @@ let
     
     # Capture the current client state
     echo "Capturing initial client state..."
-    hyprctl clients > /shared/test-results/expected.txt
-    
+    hyprctl clients -j > $RESULT_DIR/expected.json
+
     # Show what we captured
     echo "Initial clients:"
-    cat /shared/test-results/expected.txt
-    
+    cat $RESULT_DIR/expected.json
+
     echo "=== Phase 3: Saving session ==="
     
     # Save the current session
@@ -68,7 +67,7 @@ let
     
     # Verify session was saved
     if ! hyprsession list | grep -q "test-session"; then
-      echo "ERROR: Session was not saved properly"
+     echo "ERROR: Session was not saved properly"
       exit 1
     fi
     
@@ -105,35 +104,39 @@ let
     
     # Capture the restored state
     echo "Capturing restored client state..."
-    hyprctl clients > /shared/test-results/actual.txt
-    
+    hyprctl clients -j > $RESULT_DIR/actual.json
+
     # Show what we captured
     echo "Restored clients:"
-    cat /shared/test-results/actual.txt
-    
+    cat $RESULT_DIR/actual.json
+
     echo "=== Phase 7: Analysis ==="
     
     # Compare the results
     echo "Comparing expected vs actual client states..."
     
     # Extract just the application names for comparison
-    grep -o '"class":"[^"]*"' /shared/test-results/expected.txt | sort > /shared/test-results/expected_classes.txt
-    grep -o '"class":"[^"]*"' /shared/test-results/actual.txt | sort > /shared/test-results/actual_classes.txt
-    
+    function process_json() {
+      cat "$1" | jq 'del(.pid) | sort_by(.title)' > "$2"
+    }
+
+    process_json $RESULT_DIR/expected.json $RESULT_DIR/expected_classes.txt
+    process_json $RESULT_DIR/actual.json $RESULT_DIR/actual_classes.txt
+
     echo "Expected classes:"
-    cat /shared/test-results/expected_classes.txt
-    
+    cat $RESULT_DIR/expected_classes.txt
+
     echo "Actual classes:"
-    cat /shared/test-results/actual_classes.txt
-    
+    cat $RESULT_DIR/actual_classes.txt
+
     # Check if we have similar applications restored
-    if diff /shared/test-results/expected_classes.txt /shared/test-results/actual_classes.txt > /shared/test-results/diff.txt; then
+    if diff $RESULT_DIR/expected_classes.txt $RESULT_DIR/actual_classes.txt > $RESULT_DIR/diff.txt; then
       echo "✅ SUCCESS: Session restored correctly!"
-      echo "PASS" > /shared/test-results/result.txt
+      echo "PASS" > $RESULT_DIR/result.txt
     else
       echo "⚠️  DIFFERENCES FOUND:"
-      cat /shared/test-results/diff.txt
-      echo "PARTIAL" > /shared/test-results/result.txt
+      cat $RESULT_DIR/diff.txt
+      echo "PARTIAL" > $RESULT_DIR/result.txt
     fi
     
     # Cleanup
@@ -141,10 +144,10 @@ let
     hyprsession delete test-session || true
     
     echo "=== Test Complete ==="
-    echo "Results saved in /shared/test-results/"
-    
+    echo "Results saved in $RESULT_DIR/"
+
     # Keep the session open for manual inspection
-    echo "VM will remain open for manual inspection. Check /shared/test-results/ for outputs."
+    echo "VM will remain open for manual inspection. Check $RESULT_DIR/ for outputs."
     echo "Press Ctrl+C to exit or close the VM window."
     
     # Wait indefinitely so user can inspect
@@ -211,8 +214,8 @@ in {
 
       bind = CTRL SUPER, mouse_down, workspace, e+1
       bind = CTRL SUPER, mouse_up, workspace, e-1
-      
-      exec-once = kitty -e ${testScript}/bin/hyprsession-test;
+
+      exec-once = ${testScript}/bin/hyprsession-test &> /shared/test-results/hyprsession-test.log ;
     '';
   };
 }

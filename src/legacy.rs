@@ -64,8 +64,8 @@ pub fn main() -> hyprland::Result<()> {
     create_dir_all(&session_path).expect(&format!("Failed to create session dir: {session_path}"));
 
     match mode {
-        Mode::Default | Mode::LoadAndExit => load_session(&session_path, args.load_time, false, simulate),
-        Mode::SaveAndExit | Mode::SaveOnly => save_session(&session_path, args.save_duplicate_pids),
+        Mode::Default | Mode::LoadAndExit => load_session(&session_path, "", args.load_time, false, simulate),
+        Mode::SaveAndExit | Mode::SaveOnly => save_session(&session_path, "", args.save_duplicate_pids),
     }?;
 
     if mode == Mode::LoadAndExit  {
@@ -77,7 +77,7 @@ pub fn main() -> hyprland::Result<()> {
     }
 
     loop {
-        save_session(&session_path, args.save_duplicate_pids)?;
+        save_session(&session_path, "", args.save_duplicate_pids)?;
         thread::sleep(time::Duration::from_secs(save_interval));
     }
 }

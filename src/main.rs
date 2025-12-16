@@ -39,7 +39,7 @@ struct Args {
     mode: Mode,
 
     /// Name of the session to switch to or delete
-    #[arg(default_value_t = String::from("default"))]
+    #[arg(default_value_t = String::from(""))]
     name: String,
 
     /// Whether to store multiple clients owned by the same application
@@ -67,6 +67,7 @@ struct Args {
     save_count: u32,
 }
 
+
 fn main() {
     if std::env::args().any(|arg| arg == "--mode") {
         eprintln!("Warning: '--mode' argument is deprecated. Please consult documentation for updated usage.");
@@ -76,7 +77,11 @@ fn main() {
 
     let args = Args::parse();
     let mode = args.mode;
-    let session_path = env::var("HOME").unwrap() + "/.local/share/hyprsession";
+    let session_path = if env::var("HYPRSESSION_PATH").is_ok() {
+        env::var("HYPRSESSION_PATH").unwrap()
+    } else {
+        env::var("HOME").unwrap() + "/.local/share/hyprsession"
+    };
 
     create_dir_all(&session_path).expect(&format!("Failed to create session dir: {session_path}"));
 
@@ -85,16 +90,22 @@ fn main() {
         exit(1);
     }
 
-    if mode == Mode::Load || mode == Mode::Clear {
-        clear_session(args.simulate);
-    }
-
-    if mode == Mode::Default || mode == Mode::Load {
-        load_session(&session_path, args.load_time, args.adjust_clients_only, args.simulate);
-    }
-
-    if mode == Mode::Save {
-        save_session(&session_path, args.save_duplicate_pids);
+    match mode {
+        Mode::Default | Mode::Load | Mode::Clear => {
+            clear_session(args.simulate);
+            if mode != Mode::Clear {
+                load_session(&session_path, &args.name, args.load_time, args.adjust_clients_only, args.simulate).expect("Failed to load session");
+            }
+        }
+        Mode::List => {
+            list_sessions(&session_path);
+        }
+        Mode::Delete => {
+            delete_session(&session_path, &args.name);
+        }
+        Mode::Save => {
+            save_session(&session_path, &args.name, args.save_duplicate_pids);
+        }
     }
 
     if mode != Mode::Default {
@@ -103,6 +114,6 @@ fn main() {
 
     for _ in 0..(if args.save_count == 0 { 99999 } else { args.save_count }) {
         thread::sleep(time::Duration::from_secs(args.save_interval));
-        save_session(&session_path, args.save_duplicate_pids);
+        save_session(&session_path, &args.name, args.save_duplicate_pids);
     }
 }

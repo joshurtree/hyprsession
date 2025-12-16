@@ -57,6 +57,7 @@
           wget
           vim
           htop
+          jq
           
           # Hyprland ecosystem
           waybar
@@ -121,7 +122,7 @@
           services.qemuGuest.enable = true;
           virtualisation = {
             sharedDirectories.config = {
-              source = "/home/josh/projects/hyprsession/tests/test-results";
+              source = "/home/josh/projects/hyprsession/tests/vm-test";
               target = "/shared";
               securityModel = "none";
             };

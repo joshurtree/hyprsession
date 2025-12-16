@@ -6,9 +6,10 @@ use hyprland::shared::Address;
 use std::fs::File;
 use std::io::{read_to_string, Write};
 use crate::command_detection::fetch_command;
+use std::path::PathBuf;
 
-const EXEC_NAME: &str = "/exec.conf";
-const CLIENTS_PATH_NAME: &str = "/clients.json";
+const EXEC_NAME: &str = "exec.conf";
+const CLIENTS_PATH_NAME: &str = "clients.json";
 
 macro_rules! iif {
     ($prop:expr, $val:expr) => {
@@ -16,6 +17,16 @@ macro_rules! iif {
     };
     ($prop:expr, $val:expr, $alt:expr) => {
         if $prop { $val } else { $alt }
+    };
+}
+
+macro_rules! to_base_dir {
+    ($base_path:expr, $name:expr) => {
+        if $name.is_empty() {
+            PathBuf::from($base_path)
+        } else {
+            [$base_path, $name].iter().collect::<PathBuf>()
+        }
     };
 }
 
@@ -84,8 +95,11 @@ fn process_window_event(address: Address, clients_data: &'static str, start_time
     }
 }
 
-pub fn save_session(base_path: &str, save_duplicate_pids: bool) -> hyprland::Result<()> {
-    let base_dir = base_path.to_owned();
+pub fn save_session(base_path: &str, name: &str, save_duplicate_pids: bool) -> hyprland::Result<()> {
+    println!("Saving session: {}", name);
+    let base_dir: PathBuf = to_base_dir!(base_path, name);
+    std::fs::create_dir_all(&base_dir).expect("Failed to create session directory");
+
     let props = [
         |info: &Client| format!("monitor {:?}", info.monitor.unwrap_or(0)),
         |info: &Client| iif!(info.workspace.id == -99,
@@ -100,9 +114,9 @@ pub fn save_session(base_path: &str, save_duplicate_pids: bool) -> hyprland::Res
 
     let client_info = Clients::get().expect("Unable to fetch clients");
 
-    let mut exec_file = File::create(base_dir.clone() + EXEC_NAME)
+    let mut exec_file = File::create(base_dir.join(EXEC_NAME))
         .expect("Failed to create session file");
-    let clients_file = File::create(base_dir.clone() + CLIENTS_PATH_NAME)
+    let clients_file = File::create(base_dir.join(CLIENTS_PATH_NAME))
         .expect("Failed to create clients file");
     let mut pids: Vec<i32> = vec![];
     let mut saved_clients: Vec<Client> = vec![];
@@ -129,10 +143,8 @@ pub fn save_session(base_path: &str, save_duplicate_pids: bool) -> hyprland::Res
     Ok(())
 }
 
-fn load_programs(base_path: &String, simulate: bool) -> hyprland::Result<()> {
-    let base_dir = base_path.to_owned();
-
-    let session_file = File::open(base_dir.clone() + EXEC_NAME);
+fn load_programs(base_path: &PathBuf, simulate: bool) -> hyprland::Result<()> {
+    let session_file = File::open(base_path.join(EXEC_NAME));
 
     if session_file.is_ok() {
         for line in read_to_string(session_file.unwrap()).unwrap().lines() {
@@ -146,16 +158,16 @@ fn load_programs(base_path: &String, simulate: bool) -> hyprland::Result<()> {
     Ok(())
 }
 
-pub fn load_session(base_path: &String, load_time:  u64, adjust_clients_only: bool, simulate: bool) -> hyprland::Result<()> {
-    let base_dir = base_path.to_owned();
+pub fn load_session(base_path: &String, name: &str, load_time:  u64, adjust_clients_only: bool, simulate: bool) -> hyprland::Result<()> {
+    let base_dir: PathBuf = to_base_dir!(base_path, name);
     let start_time = std::time::Instant::now();
 
     if adjust_clients_only {
-        load_programs(&base_dir, simulate)?;
+        load_programs(&base_dir.clone(), simulate)?;
     }
 
     std::thread::spawn(move || {
-        let clients_file_path = base_dir + CLIENTS_PATH_NAME;
+        let clients_file_path = base_dir.join(CLIENTS_PATH_NAME);
         let clients_data = std::fs::read_to_string(&clients_file_path)
             .unwrap_or_else(|_| "[]".to_string());
         let clients_data: &'static str = Box::leak(clients_data.into_boxed_str());
@@ -184,4 +196,32 @@ pub fn clear_session(simulate: bool) -> hyprland::Result<()> {
     }
     println!("Cleared existing session");
     Ok(())
+}
+
+pub fn list_sessions(session_path: &str) {
+    let paths = std::fs::read_dir(session_path).unwrap();
+    let mut found = false;
+
+    println!("Available sessions:");
+
+    for path in paths {
+        let entry = path.unwrap();
+        if entry.path().is_dir() {
+            if let Some(name) = entry.file_name().to_str() {
+                println!("- {}", name);
+                found = true;
+            }
+        }
+    }
+
+    if !found { println!("(No sessions found)"); }
+}
+
+pub fn delete_session(session_path: &str, session_name: &str) {
+    let full_path = format!("{}/{}", session_path, session_name);
+    if std::fs::remove_dir_all(&full_path).is_ok() {
+        println!("Deleted session: {}", session_name);
+    } else {
+        println!("Failed to delete session: {}", session_name);
+    }
 }
