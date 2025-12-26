@@ -169,41 +169,41 @@ jobs:
           echo "Version detected: $VERSION"
 
       - name: Generate PKGBUILD file
-        run: |
+        run: |-
           cat <<EOF > PKGBUILD
-            # Maintainer: Josh Andrews <coding@joshandrews.xyz>
-            pkgname=hyprsession
-            pkgver=${{ steps.version.outputs.version }}
-            pkgrel=1
-            pkgdesc="Saves hyprland sessions"
-            arch=('x86_64')
-            url="https://github.com/joshurtree/hyprsession"
-            license=('GPL-3.0-or-later')
-            depends=()
-            makedepends=('rust' 'cargo')
-            source=("$pkgname-$pkgver.tar.gz::https://github.com/joshurtree/hyprsession/archive/refs/tags/v$pkgver.tar.gz")
-            sha256sums=('${{ steps.checksum.outputs.checksum }}')
+          # Maintainer: Josh Andrews <coding@joshandrews.xyz>
+          pkgname=hyprsession
+          pkgver=${{ steps.version.outputs.version }}
+          pkgrel=1
+          pkgdesc="Saves hyprland sessions"
+          arch=('x86_64')
+          url="https://github.com/joshurtree/hyprsession"
+          license=('GPL-3.0-or-later')
+          depends=()
+          makedepends=('rust' 'cargo')
+          source=("$pkgname-$pkgver.tar.gz::https://github.com/joshurtree/hyprsession/archive/refs/tags/v$pkgver.tar.gz")
+          sha256sums=('${{ steps.checksum.outputs.checksum }}')
 
-            build() {
-              cd "$pkgname-$pkgver"
-              export RUSTUP_TOOLCHAIN=stable
-              export CARGO_TARGET_DIR=target
-              cargo build --frozen --release --all-features
-            }
+          build() {
+            cd "$pkgname-$pkgver"
+            export RUSTUP_TOOLCHAIN=stable
+            export CARGO_TARGET_DIR=target
+            cargo build --frozen --release --all-features
+          }
 
-            check() {
-              cd "$pkgname-$pkgver"
-              export RUSTUP_TOOLCHAIN=stable
-              cargo test --frozen --all-features
-            }
+          check() {
+            cd "$pkgname-$pkgver"
+            export RUSTUP_TOOLCHAIN=stable
+            cargo test --frozen --all-features
+          }
 
-            package() {
-              cd "$pkgname-$pkgver"
-              install -Dm755 "target/release/$pkgname" "$pkgdir/usr/bin/$pkgname"
-              install -Dm644 "README.md" "$pkgdir/usr/share/doc/$pkgname/README.md"
-              install -Dm644 "LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
-            }
-            EOF
+          package() {
+            cd "$pkgname-$pkgver"
+            install -Dm755 "target/release/$pkgname" "$pkgdir/usr/bin/$pkgname"
+            install -Dm644 "README.md" "$pkgdir/usr/share/doc/$pkgname/README.md"
+            install -Dm644 "LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+          }
+          EOF
       - name: Get SHA256 checksum from repository
         id: checksum
         run: |
@@ -214,10 +214,10 @@ jobs:
           echo "SHA256: $SHA256"
 
       - name: Publish to AUR
-        uses: KSXGitHub/github-actions-deploy-aur@v2.7.2
+        uses: KSXGitHub/github-actions-deploy-aur@v4.1.1
         with:
           pkgname: hyprsession
-          pkgbuild: PKGBUILD
+          pkgbuild: ./PKGBUILD
           commit_username: ${{ secrets.AUR_USERNAME }}
           commit_email: ${{ secrets.AUR_EMAIL }}
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
