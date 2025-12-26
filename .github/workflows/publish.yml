@@ -121,7 +121,6 @@ jobs:
       - check_context_tokens
       - audit
       - build_linux
-      - add_version_tag
 
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -159,8 +158,6 @@ jobs:
     needs:
       - audit
       - build_linux
-      - add_version_tag
-      - crates_io_publish
 
     runs-on: ubuntu-latest
     timeout-minutes: 15
