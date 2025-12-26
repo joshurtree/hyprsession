@@ -105,6 +105,12 @@ jobs:
       - name: Create Git Tag
         run: |
           git config --global user.name " github-actions[bot]"
+          # Check if tag already exists
+          if git rev-parse "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
+            echo "Tag v${{ steps.version.outputs.version }} already exists, skipping tag creation"
+            exit 0
+          fi
+          
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git tag "v${{ steps.version.outputs.version }}"
           git push origin "v${{ steps.version.outputs.version }}"
