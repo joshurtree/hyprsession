@@ -1,20 +1,37 @@
-use regex::Regex;
+//use regex::Regex;
 use std::fs;
 use std::process::Command;
-use hyprland::data::{Clients, Client};
+use hyprland::data::{Client, Clients};
 use hyprland::shared::HyprData;
 
+/// Check if a command exists in PATH using 'which'
+pub fn command_exists_in_path(command: &str) -> bool {
+    if command.is_empty() {
+        return false;
+    }
+    
+    Command::new("which")
+        .arg(command.split_whitespace().next().unwrap())
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false)
+}
+
 /// Extract the binary name from a command string
-pub fn extract_binary_name(command: &str) -> &str {
-    command
-        .split_whitespace()
+fn extract_binary_name(command: &str) -> String {
+    let parts = command.split_whitespace();
+    let binary = parts
+        .clone()
         .next()
         .unwrap_or("")
         .split('/')
         .last()
-        .unwrap_or("")
+        .unwrap_or("");
+
+    format!("{} {}", binary, parts.skip(1).collect::<Vec<&str>>().join(" ")).trim().to_string()
 }
 
+/*
 /// Handle NixOS wrapped commands
 pub fn handle_nix_wrapped(command: &str) -> Option<String> {
     // Handle both formats: /nix/store/hash-name-wrapped and .name-wrapped
@@ -38,7 +55,7 @@ pub fn handle_flatpak(command: &str) -> Option<String> {
     // Look for --app-id= first, then fall back to positional argument
     if let Ok(re) = Regex::new(r"--app-id=([^\s]+)") {
         if let Some(caps) = re.captures(command) {
-            return caps.get(1).map(|m| m.as_str().to_string());
+            return Some("flatpak run ".to_string() + &caps.get(1).map(|m| m.as_str().to_string()).unwrap_or_default());
         }
     }
     
@@ -68,96 +85,59 @@ pub fn handle_snap(command: &str) -> Option<String> {
         .and_then(|caps| caps.get(1))
         .map(|m| m.as_str().to_string())
 }
+*/
 
-/// Check if a command exists in PATH using 'which'
-pub fn command_exists_in_path(command: &str) -> bool {
-    if command.is_empty() {
-        return false;
-    }
-    
-    Command::new("which")
-        .arg(command)
-        .output()
-        .map(|output| output.status.success())
-        .unwrap_or(false)
-}
-
-/// Handle special command cases (NixOS wrapped, Flatpak, AppImage, etc.)
-pub fn handle_special_commands(command: &str) -> String {
-    // Handle NixOS wrapped commands
-    if let Some(unwrapped) = handle_nix_wrapped(command) {
-        return unwrapped;
-    }
-    
-    // Handle Flatpak applications
-    if let Some(flatpak_app) = handle_flatpak(command) {
-        return flatpak_app;
-    }
-    
-    // Handle AppImage applications  
-    if let Some(appimage_name) = handle_appimage(command) {
-        return appimage_name;
-    }
-    
-    // Handle Snap applications
-    if let Some(snap_name) = handle_snap(command) {
-        return snap_name;
-    }
-    
-    // Return original command if no special handling needed
-    command.to_string()
-}
-
-/// Fetch command for a Hyprland client using multiple detection methods
-pub fn fetch_command(client: &Client) -> String {
-    // Method 1: Try /proc/PID/cmdline (most reliable)
+fn handle_proc_cmdline(client: &Client) -> Result<String, std::io::Error> {
     let cmdline_path = format!("/proc/{}/cmdline", client.pid);
     if let Ok(cmdline) = fs::read_to_string(&cmdline_path) {
         let cleaned: String = cmdline
             .replace('\0', " ")
             .trim()
             .to_string();
-            
-        if !cleaned.is_empty() {
-            let processed = handle_special_commands(&cleaned);
-            let binary_name = extract_binary_name(&processed);
-            
-            // Validate with 'which' if it looks like a simple command
-            if !binary_name.contains('/') && command_exists_in_path(binary_name) {
-                return processed;
-            } else if !processed.is_empty() {
-                return processed;
-            }
-        }
+
+        Ok(extract_binary_name(&cleaned))
+    } else {
+        Err(std::io::Error::new(std::io::ErrorKind::NotFound, "Cmdline not found"))
     }
-    
-    // Method 2: Try /proc/PID/exe (executable path fallback)
+}
+
+fn handle_proc_exe(client: &Client) -> Result<String, std::io::Error> {
     let exe_path = format!("/proc/{}/exe", client.pid);
     if let Ok(exe_target) = fs::read_link(&exe_path) {
         if let Some(exe_name) = exe_target.file_name() {
-            let exe_string = exe_name.to_string_lossy().to_string();
-            let processed = handle_special_commands(&exe_string);
-            
-            // Validate with 'which'
-            if command_exists_in_path(&processed) {
-                return processed;
-            } else if !processed.is_empty() {
-                return processed;
+            return Ok(exe_name.to_string_lossy().to_string());
+        }
+    }
+    Err(std::io::Error::new(std::io::ErrorKind::NotFound, "Exe not found"))
+}
+
+fn handle_initial_class(client: &Client) -> Result<String, std::io::Error> {
+    Ok(client.initial_class.to_lowercase())
+}
+
+fn handle_initial_title(client: &Client) -> Result<String, std::io::Error> {
+    Ok(client.initial_title.to_lowercase())
+}
+
+/// Fetch command for a Hyprland client using multiple detection methods
+pub fn fetch_command(client: &Client) -> Result<String, std::io::Error> {
+    let handlers = vec![
+        handle_proc_cmdline,
+        handle_proc_exe,
+        handle_initial_class,
+        handle_initial_title,
+    ];
+
+    for handler in handlers {
+        if let Ok(command) = handler(client) {
+            if command_exists_in_path(&command) {
+                return Ok(command);
             }
         }
     }
-    
-    // Method 3: Fall back to client.class (final fallback)
-    if !client.class.is_empty() {
-        return client.initial_class.to_lowercase();
-    }
-    
-    // Last resort: use client title
-    if !client.title.is_empty() {
-        return client.initial_title.to_lowercase();
-    }
-    
-    "unknown".to_string()
+
+    // Fallback to cmdline even if not in PATH
+    handle_proc_cmdline(client)
 }
 
 #[cfg(test)]
@@ -166,12 +146,13 @@ mod tests {
     
     #[test]
     fn test_extract_binary_name() {
-        assert_eq!(extract_binary_name("firefox --new-window"), "firefox");
         assert_eq!(extract_binary_name("/usr/bin/firefox"), "firefox");
-        assert_eq!(extract_binary_name("/nix/store/.firefox-wrapped"), ".firefox-wrapped");
         assert_eq!(extract_binary_name("code"), "code");
+        assert_eq!(extract_binary_name("/usr/bin/firefox --new-window"), "firefox --new-window");
+        assert_eq!(extract_binary_name("/nix/store/.firefox-wrapped"), ".firefox-wrapped");
     }
     
+    /*
     #[test]
     fn test_handle_nix_wrapped() {
         // Test .name-wrapped format
@@ -190,7 +171,7 @@ mod tests {
         assert_eq!(result_full, "firefox --new-window --private");
         
         // Test simple .name-wrapped without args
-        let cmd_simple = ".chromium-wrapped";
+        let cmd_simple = "/nix/store/randomhash/.chromium-wrapped";
         let result_simple = handle_nix_wrapped(cmd_simple).unwrap();
         assert_eq!(result_simple, "chromium");
     }
@@ -199,11 +180,11 @@ mod tests {
     fn test_handle_flatpak() {
         let cmd = "flatpak run org.mozilla.firefox --new-window";
         let result = handle_flatpak(cmd).unwrap();
-        assert_eq!(result, "org.mozilla.firefox");
+        assert_eq!(result, "flatpak run org.mozilla.firefox --new-window");
         
         let cmd_with_flags = "flatpak run --app-id=org.gimp.GIMP --file=test.jpg";
         let result_with_flags = handle_flatpak(cmd_with_flags).unwrap();
-        assert_eq!(result_with_flags, "org.gimp.GIMP");
+        assert_eq!(result_with_flags, "flatpak run --app-id=org.gimp.GIMP --file=test.jpg");
     }
     
     #[test]
@@ -219,23 +200,7 @@ mod tests {
         let result = handle_snap(cmd).unwrap();
         assert_eq!(result, "firefox");
     }
- 
-    #[test]
-    #[ignore] // Requires Bitwarden to be running (not yet implemented)
-    fn test_handle_bitwarden() {
-        let pid = Command::new("pgrep")
-            .arg("-o")
-            .arg("electron")
-            .output()
-            .expect("Failed to execute pgrep")
-            .stdout;
-        let client = Clients::get().expect("Unable to fetch clients")
-                                .into_iter()
-                                .find(|c| c.initial_class.to_string() == "Bitwarden")
-                                .expect("Bitwarden client not found");
-        assert_eq!(fetch_command(&client), "bitwarden");
-    }
-
+    */
     #[test]
     #[ignore] // Weird bug when running as a nix flake
     fn test_command_exists_in_path() {

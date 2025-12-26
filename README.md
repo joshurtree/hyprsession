@@ -46,17 +46,51 @@ hyprsession save-and-exit
 Various options can be used to modify the behavior of Hyprsession.
 
 ### <mode>
-Sets the mode the program runs in 
-* Default - Loads the session at startup the saves the current session at regular intervals.
-* SaveOnly - As above but skips loading the session
-* LoadAndExit - Load the saved session then immediatly exit
-* SaveAndExit - Save the current session then exit
+One of
+* default - Loads the session at startup the saves the current session at regular intervals.
+* load - Load the session given by name (clears current session first)
+* save - Save the current session 
+* clear - Clear the current session (removes all windows)
+* list - List all available sessions
+* delete - Delete a session
+* command - Create a command to deal with edge cases (see below)
+ 
+### <name>
+Name of the session or command
+
+### <command>
+Command to run (see below) 
+
+### --load-time n
+The period of time after loading a session that windows are modified to match virtual counterparts
 
 ### --save-interval n
 This sets the interval in seconds between session saves. The default is 60 seconds.
 
 ### --session-path
 This allows the user to save the session config in an alternative directory, by default its ~/.local/share/hyprsession. 
+
+### --simulate
+Only simulate loading and clearing of sessions
+
+### --mode <mode> (depreciated)
+Sets the mode the program runs in 
+* Default - Loads the session at startup the saves the current session at regular intervals.
+* SaveOnly - As above but skips loading the session
+* LoadAndExit - Load the saved session then immediatly exit
+* SaveAndExit - Save the current session then exit
+
+## Command detection and fake commands
+Detecting what command is needed to create any given window in wayland does not have a single uniform solution.
+The information within the `/proc` directory is used to try and find this. If this doesn't yield a command available 
+via $PATH then the `initial_class` of the window is checked followed by `initial_title`.  
+
+With applications that come in the form of Flatpaks, Snaps or Electron apps this method does not produce a proper result. 
+To solve this requires the use of fake commands. An example would be if you use the Firefox flatpak then runing
+```
+hyprsession command firefox "flatpak run org.mozilla.firefox"
+```
+This creates a script in the `~/.local/bin` directory that runs the correct command.
 
 ## Change log
 ### 0.1.1
@@ -76,17 +110,18 @@ This allows the user to save the session config in an alternative directory, by 
 * Handle wrapped programs in Nixos
 ### 0.2.0
 * Breaking change: Remove the need to use '--mode' to specify what mode to launch the program in
+* Introduce named sessions
 * Improve method of finding originating command for clients
-* Track client creation to better place them
+* Track client creation to try and better place them
+* Introduce 'fake command' functionality to deal with programs complicated launch patterns (flatpak, snap etc.)
+* Refactor code to allow potential future use as either standalone or as a client
 
-## Testing
-
-Hyprsession includes comprehensive integration tests that run in a NixOS VM environment. These tests verify that session save/restore functionality works correctly with real applications.
+## Development
 
 ### Running Tests
-
+Along side the standard tests you can create a test within a vm using nix by running 
 ```bash
-cd tests
+cd tests/vm-test
 ./run-test.sh
 ```
 
@@ -97,15 +132,8 @@ This will:
 4. Clear the workspace and restore with `hyprsession load`  
 5. Compare before/after states and report results
 
-Test results are saved to `tests/test-results/` with detailed comparison data.
-
-For manual testing:
-```bash
-cd tests
-./run-test.sh vm  # Start VM for manual testing
-```
-
-See `tests/README.md` for detailed testing documentation.
+Test results are saved to `tests/test-results/` with detailed comparison data. The programs started can be changed by
+editing `tests/vm-test/exec.conf`
 
 ## Thanks
 

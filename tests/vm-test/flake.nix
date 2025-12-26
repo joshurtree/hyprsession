@@ -7,9 +7,10 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    nix-flatpak.url = "github:gmodena/nix-flatpak/?ref=latest";
   };
 
-  outputs = { self, nixpkgs, home-manager, ... }:
+  outputs = { self, nixpkgs, home-manager, nix-flatpak, ... }:
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
@@ -35,11 +36,13 @@
               home-manager.useUserPackages = true;
               home-manager.users.testuser = ./home.nix;
           }
+          nix-flatpak.nixosModules.nix-flatpak
         ];
 
         # Basic system configuration
         system.stateVersion = "25.11";
-        
+        nixpkgs.config.allowUnfree = true;
+
         # Enable Hyprland
         programs.hyprland = {
           enable = true;
@@ -58,6 +61,7 @@
           vim
           htop
           jq
+          jd-diff-patch
           
           # Hyprland ecosystem
           waybar
@@ -67,13 +71,13 @@
           # Terminal and basic apps
           kitty
           alacritty
+          nautilus
           
-          # Browsers for testing
+          # for testing
           firefox
-          
-          # Additional GUI apps for testing
           gnome-calculator
-          
+          discord
+
           # Flatpak for testing
           flatpak
           
@@ -82,7 +86,14 @@
        ];
 
         # Flatpak setup
-        services.flatpak.enable = true;
+        services.flatpak = {
+          enable = true;
+          packages = [
+            "org.mozilla.firefox"
+            "com.obsproject.Studio"
+            "com.collaboraoffice.Office"
+          ];
+        };
         
         # XDG portals for proper integration
         xdg.portal = {

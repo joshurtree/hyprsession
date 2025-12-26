@@ -5,7 +5,8 @@ let
     set -e
 
     RESULT_DIR="/shared/test-results"
-    
+    export HYPRSESSION_PATH="/shared/session-data"
+
     # Wait for Hyprland to be ready
     sleep 5
     
@@ -16,48 +17,31 @@ let
     fi
     
     echo "=== Starting Hyprsession Integration Test ==="
-        
+    echo "hyprsession data path: $HYPRSESSION_PATH"
+
+    hyprsession command coda-qt "flatpak run org.colabora.Office"
+    
     # Check if a session already exists
     if hyprsession list | grep -q "test-session"; then
       echo "Found existing test session, cleaning up..."
       hyprsession delete test-session || true
     fi
-    
-    echo "=== Phase 1: Loading test applications ==="
-    
-    # Start Firefox
-    echo "Starting Firefox..."
-    firefox &
-    sleep 3
-    
-    # Start a Flatpak application (if available)
-    if command -v flatpak > /dev/null && flatpak list | grep -q "org.mozilla.firefox"; then
-      echo "Starting Flatpak Firefox..."
-      flatpak run org.mozilla.firefox --new-instance &
-      sleep 3
-    fi
-    
-    # Start some additional applications for testing
-    echo "Starting additional test applications..."
-    kitty &
-    sleep 2
-    
-    # Start a simple GUI application
-    gnome-calculator &
-    sleep 2
-    
-    echo "=== Phase 2: Capturing initial state ==="
-    
-    # Wait for applications to fully load
-    sleep 5
-    
-    # Capture the current client state
-    echo "Capturing initial client state..."
-    hyprctl clients -j > $RESULT_DIR/expected.json
 
-    # Show what we captured
-    echo "Initial clients:"
-    cat $RESULT_DIR/expected.json
+    rm -rf ~/.mozilla/firefox
+    echo "{ \"SKIP_UPDATE_CHECK\": true }" > ~/.config/discord/settings.json    
+
+    echo "=== Phase 1: Loading test applications ==="
+
+    cat /shared/exec.conf | while read -r line; do
+      echo "Starting application: $line"
+      hyprctl dispatch exec $line
+      sleep 1
+    done
+
+    sleep 60
+
+    echo "=== Phase 2: Capturing initial state ==="        
+    hyprctl clients -j > $RESULT_DIR/expected.json
 
     echo "=== Phase 3: Saving session ==="
     
@@ -74,23 +58,20 @@ let
     echo "Session saved successfully!"
     hyprsession list
     
-    echo "=== Phase 4: Clearing workspace ==="
+    # echo "=== Phase 4: Clearing workspace ==="
     
     # Close all windows
-    echo "Closing all windows..."
-    hyprctl dispatch closewindow ""
-    sleep 2
-    
-    # Kill remaining processes
-    pkill firefox || true
-    pkill kitty || true
-    pkill gnome-calculator || true
-    sleep 3
-    
+    echo "Clearing all windows from workspace..."
+    hyprsession clear
+    sleep 5
+
     # Verify workspace is clear
     echo "Workspace after cleanup:"
-    hyprctl clients
-    
+    while hyprctl clients|grep "No clients found" > /dev/null 2>&1; do
+      echo "All windows closed."
+      break
+    done
+
     echo "=== Phase 5: Loading session ==="
     
     # Load the saved session
@@ -102,13 +83,7 @@ let
     
     echo "=== Phase 6: Capturing final state ==="
     
-    # Capture the restored state
-    echo "Capturing restored client state..."
     hyprctl clients -j > $RESULT_DIR/actual.json
-
-    # Show what we captured
-    echo "Restored clients:"
-    cat $RESULT_DIR/actual.json
 
     echo "=== Phase 7: Analysis ==="
     
@@ -117,20 +92,14 @@ let
     
     # Extract just the application names for comparison
     function process_json() {
-      cat "$1" | jq 'del(.pid) | sort_by(.title)' > "$2"
+      cat "$1" | jq 'sort_by(.title) | .[] | del(.pid) | del(.address) | del(.focusHistoryID)'|jq -s . > "$2"
     }
 
-    process_json $RESULT_DIR/expected.json $RESULT_DIR/expected_classes.txt
-    process_json $RESULT_DIR/actual.json $RESULT_DIR/actual_classes.txt
-
-    echo "Expected classes:"
-    cat $RESULT_DIR/expected_classes.txt
-
-    echo "Actual classes:"
-    cat $RESULT_DIR/actual_classes.txt
+    process_json $RESULT_DIR/expected.json $RESULT_DIR/expected_classes.json
+    process_json $RESULT_DIR/actual.json $RESULT_DIR/actual_classes.json
 
     # Check if we have similar applications restored
-    if diff $RESULT_DIR/expected_classes.txt $RESULT_DIR/actual_classes.txt > $RESULT_DIR/diff.txt; then
+    if jd $RESULT_DIR/expected_classes.json $RESULT_DIR/actual_classes.json > $RESULT_DIR/diff.txt; then
       echo "✅ SUCCESS: Session restored correctly!"
       echo "PASS" > $RESULT_DIR/result.txt
     else
@@ -139,19 +108,10 @@ let
       echo "PARTIAL" > $RESULT_DIR/result.txt
     fi
     
-    # Cleanup
-    echo "=== Cleanup ==="
-    hyprsession delete test-session || true
-    
+    hyprctl dispatch exec kitty
+
     echo "=== Test Complete ==="
     echo "Results saved in $RESULT_DIR/"
-
-    # Keep the session open for manual inspection
-    echo "VM will remain open for manual inspection. Check $RESULT_DIR/ for outputs."
-    echo "Press Ctrl+C to exit or close the VM window."
-    
-    # Wait indefinitely so user can inspect
-    tail -f /dev/null
   '';
 in {
   # Home Manager configuration

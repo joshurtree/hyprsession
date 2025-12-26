@@ -52,9 +52,15 @@ pub fn main() -> hyprland::Result<()> {
     let args = Args::parse();
     let mode = args.mode;
     let save_interval = args.save_interval;
-    let simulate = args.simulate;
     let default_path = env::var("HOME").unwrap() + "/.local/share/hyprsession";
     let session_path = args.session_path.unwrap_or(default_path);
+    let sessions = LocalSession {
+        base_path: session_path.clone(),
+        adjust_clients_only: false,
+        load_time: 30,
+        simulate: args.simulate,
+        save_duplicate_pids: args.save_duplicate_pids,
+    };
 
     if args.save_interval == 0 {
         eprintln!("Error: save-interval of 0 is invalid");
@@ -64,8 +70,8 @@ pub fn main() -> hyprland::Result<()> {
     create_dir_all(&session_path).expect(&format!("Failed to create session dir: {session_path}"));
 
     match mode {
-        Mode::Default | Mode::LoadAndExit => load_session(&session_path, "", args.load_time, false, simulate),
-        Mode::SaveAndExit | Mode::SaveOnly => save_session(&session_path, "", args.save_duplicate_pids),
+        Mode::Default | Mode::LoadAndExit => sessions.load(""),
+        Mode::SaveAndExit | Mode::SaveOnly => sessions.save(""),
     }?;
 
     if mode == Mode::LoadAndExit  {
@@ -77,7 +83,7 @@ pub fn main() -> hyprland::Result<()> {
     }
 
     loop {
-        save_session(&session_path, "", args.save_duplicate_pids)?;
+        sessions.save("")?;
         thread::sleep(time::Duration::from_secs(save_interval));
     }
 }
