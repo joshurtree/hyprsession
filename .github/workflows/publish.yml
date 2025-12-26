@@ -168,20 +168,9 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Version detected: $VERSION"
 
-      - name: Get SHA256 checksum from repository
-        id: checksum
+      - name: Generate PKGBUILD file
         run: |
-          # Create a temporary tarball from the repository
-          git archive --format=tar.gz --prefix=hyprsession-${{ steps.version.outputs.version }}/ HEAD > hyprsession-${{ steps.version.outputs.version }}.tar.gz
-          SHA256=$(sha256sum hyprsession-${{ steps.version.outputs.version }}.tar.gz | cut -d' ' -f1)
-          echo "checksum=$SHA256" >> $GITHUB_OUTPUT
-          echo "SHA256: $SHA256"
-
-      - name: Publish to AUR
-        uses: KSXGitHub/github-actions-deploy-aur@v2.7.2
-        with:
-          pkgname: hyprsession
-          pkgbuild: |
+          cat <<EOF > PKGBUILD
             # Maintainer: Josh Andrews <coding@joshandrews.xyz>
             pkgname=hyprsession
             pkgver=${{ steps.version.outputs.version }}
@@ -214,6 +203,21 @@ jobs:
               install -Dm644 "README.md" "$pkgdir/usr/share/doc/$pkgname/README.md"
               install -Dm644 "LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
             }
+            EOF
+      - name: Get SHA256 checksum from repository
+        id: checksum
+        run: |
+          # Create a temporary tarball from the repository
+          git archive --format=tar.gz --prefix=hyprsession-${{ steps.version.outputs.version }}/ HEAD > hyprsession-${{ steps.version.outputs.version }}.tar.gz
+          SHA256=$(sha256sum hyprsession-${{ steps.version.outputs.version }}.tar.gz | cut -d' ' -f1)
+          echo "checksum=$SHA256" >> $GITHUB_OUTPUT
+          echo "SHA256: $SHA256"
+
+      - name: Publish to AUR
+        uses: KSXGitHub/github-actions-deploy-aur@v2.7.2
+        with:
+          pkgname: hyprsession
+          pkgbuild: PKGBUILD
           commit_username: ${{ secrets.AUR_USERNAME }}
           commit_email: ${{ secrets.AUR_EMAIL }}
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
