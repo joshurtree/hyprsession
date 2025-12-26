@@ -35,11 +35,7 @@ exec-once = hyprsession
 The same line can be added to your `home.nix` hyprland configuration if your are using Nix Home Manager.
 If you want to save a session that is already running then run
 ```
-hyprsession save-only &
-```
-or
-```
-hyprsession save-and-exit
+hyprsession save <session-name>
 ```
 
 ## Options
@@ -80,17 +76,17 @@ Sets the mode the program runs in
 * LoadAndExit - Load the saved session then immediatly exit
 * SaveAndExit - Save the current session then exit
 
-## Command detection and fake commands
+## Command detection and bridge commands
 Detecting what command is needed to create any given window in wayland does not have a single uniform solution.
 The information within the `/proc` directory is used to try and find this. If this doesn't yield a command available 
 via $PATH then the `initial_class` of the window is checked followed by `initial_title`.  
 
 With applications that come in the form of Flatpaks, Snaps or Electron apps this method does not produce a proper result. 
-To solve this requires the use of fake commands. An example would be if you use the Firefox flatpak then runing
+To solve this requires the use of brige commands. By running `hyprctl clients` you can find the `initial_class` of the window. You can then create a bridging command to run the correct command on startup. For example if you use the Firefox flatpak then runing
 ```
 hyprsession command firefox "flatpak run org.mozilla.firefox"
 ```
-This creates a script in the `~/.local/bin` directory that runs the correct command.
+creates a script in the `~/.local/bin` directory that runs the correct command.
 
 ## Change log
 ### 0.1.1
@@ -113,7 +109,7 @@ This creates a script in the `~/.local/bin` directory that runs the correct comm
 * Introduce named sessions
 * Improve method of finding originating command for clients
 * Track client creation to try and better place them
-* Introduce 'fake command' functionality to deal with programs complicated launch patterns (flatpak, snap etc.)
+* Introduce bridge command functionality to deal with programs complicated launch patterns (flatpak, snap etc.)
 * Refactor code to allow potential future use as either standalone or as a client
 
 ## Development

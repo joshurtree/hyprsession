@@ -20,36 +20,6 @@
           cargoLock.lockFile = ./Cargo.lock;
           src = pkgs.lib.cleanSource ./.;
         };
-
-        # C++ version
-        hyprsession-cpp = pkgs.stdenv.mkDerivation {
-          pname = "${manifest.name}-cpp";
-          version = manifest.version;
-          src = pkgs.lib.cleanSource ./.;
-          
-          nativeBuildInputs = with pkgs; [
-            cmake
-            pkg-config
-          ];
-          
-          buildInputs = with pkgs; [
-            nlohmann_json
-            wayland
-            hyprland
-          ];
-          
-          buildPhase = ''
-            mkdir -p build
-            cd build
-            cmake .. -DCMAKE_BUILD_TYPE=Release
-            make -j$NIX_BUILD_CORES
-          '';
-          
-          installPhase = ''
-            mkdir -p $out/bin
-            cp hyprsession-cpp $out/bin/
-          '';
-        };
       };
 
       devShells = rec {
@@ -63,29 +33,7 @@
             clippy
             rustfmt
           ];
-        };
-        
-        cpp-dev = pkgs.mkShell {
-          nativeBuildInputs = with pkgs; [
-            cmake
-            gcc
-            gdb
-            pkg-config
-            clang-tools
-          ];
-          
-          buildInputs = with pkgs; [
-            nlohmann_json
-            wayland
-            hyprland
-          ];
-          
-          shellHook = ''
-            echo "C++ Development Environment"
-            echo "Available tools: cmake, g++, gdb, pkg-config"
-            echo "To build: mkdir -p build_cpp && cd build_cpp && cmake .. && make"
-          '';
-        };
+        };        
       };
     });
 }
