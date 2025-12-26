@@ -98,7 +98,7 @@ jobs:
       - name: Get version from Cargo.toml
         id: version
         run: |
-          VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/' | sed 's/-.*//')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Version detected: $VERSION"
 
@@ -168,6 +168,15 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Version detected: $VERSION"
 
+      - name: Get SHA256 checksum from repository
+        id: checksum
+        run: |
+          # Create a temporary tarball from the repository
+          git archive --format=tar.gz --prefix=hyprsession-${{ steps.version.outputs.version }}/ HEAD > hyprsession-${{ steps.version.outputs.version }}.tar.gz
+          SHA256=$(sha256sum hyprsession-${{ steps.version.outputs.version }}.tar.gz | cut -d' ' -f1)
+          echo "checksum=$SHA256" >> $GITHUB_OUTPUT
+          echo "SHA256: $SHA256"
+
       - name: Generate PKGBUILD file
         run: |-
           cat <<EOF > PKGBUILD
@@ -204,14 +213,6 @@ jobs:
             install -Dm644 "LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
           }
           EOF
-      - name: Get SHA256 checksum from repository
-        id: checksum
-        run: |
-          # Create a temporary tarball from the repository
-          git archive --format=tar.gz --prefix=hyprsession-${{ steps.version.outputs.version }}/ HEAD > hyprsession-${{ steps.version.outputs.version }}.tar.gz
-          SHA256=$(sha256sum hyprsession-${{ steps.version.outputs.version }}.tar.gz | cut -d' ' -f1)
-          echo "checksum=$SHA256" >> $GITHUB_OUTPUT
-          echo "SHA256: $SHA256"
 
       - name: Publish to AUR
         uses: KSXGitHub/github-actions-deploy-aur@v4.1.1
