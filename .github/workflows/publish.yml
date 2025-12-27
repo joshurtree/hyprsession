@@ -167,9 +167,13 @@ jobs:
       - name: Get version from Cargo.toml
         id: version
         run: |
-          VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          FULL_VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/'')
+          VERSION=$(echo "$FULL_VERSION" | sed 's/-.*//')
+          RELEASE_SUFFIX=$(echo "$FULL_VERSION" | grep -oP '(?<=-).*$' || echo "1")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "release=$RELEASE_SUFFIX" >> $GITHUB_OUTPUT
           echo "Version detected: $VERSION"
+          echo "Release suffix detected: $RELEASE_SUFFIX"
 
       - name: Get SHA256 checksum from repository
         id: checksum
@@ -186,7 +190,7 @@ jobs:
           # Maintainer: Josh Andrews <coding@joshandrews.xyz>
           pkgname=hyprsession
           pkgver=${{ steps.version.outputs.version }}
-          pkgrel=1
+          pkgrel=${{ steps.version.outputs.release }}
           pkgdesc="Saves hyprland sessions"
           arch=('x86_64')
           url="https://github.com/joshurtree/hyprsession"
