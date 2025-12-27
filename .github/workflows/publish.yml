@@ -167,7 +167,7 @@ jobs:
       - name: Get version from Cargo.toml
         id: version
         run: |
-          FULL_VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/'')
+          FULL_VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
           VERSION=$(echo "$FULL_VERSION" | sed 's/-.*//')
           RELEASE_SUFFIX=$(echo "$FULL_VERSION" | grep -oP '(?<=-).*$' || echo "1")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
