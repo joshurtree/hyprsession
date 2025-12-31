@@ -91,6 +91,7 @@ jobs:
     needs:
       - check_context_tokens
       - build_linux
+      - audit
 
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -113,15 +114,23 @@ jobs:
           
           TAG="v${{ steps.version.outputs.version }}"
           
-          # Check if tag already exists
+          # Fetch all tags from remote to ensure we have the latest
+          git fetch --tags --force
+          
+          # Check if tag already exists (locally or remotely)
           if git rev-parse "$TAG" >/dev/null 2>&1; then
             echo "Tag $TAG already exists, moving it to the latest commit"
-            # Delete the tag locally and remotely
+            # Delete the tag locally
             git tag -d "$TAG"
-            git push --force origin ":refs/tags/$TAG" || true
+            # Delete the tag remotely (force push to delete)
+            git push origin ":refs/tags/$TAG" || true
+          else
+            echo "Tag $TAG does not exist yet, creating new tag"
           fi
           
           # Create and push the new tag
+          git tag "$TAG"
+          git push origin "$TAG"
           echo "Creating and pushing tag $TAG"
           git tag "$TAG"
           git push origin "$TAG"
