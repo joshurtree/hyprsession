@@ -123,7 +123,7 @@ jobs:
             # Delete the tag locally
             git tag -d "$TAG"
             # Delete the tag remotely (force push to delete)
-            git push origin ":refs/tags/$TAG" || true
+            git push --force origin ":refs/tags/$TAG" || true
           else
             echo "Tag $TAG does not exist yet, creating new tag"
           fi
