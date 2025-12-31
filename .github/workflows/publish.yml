@@ -4,6 +4,7 @@ on:
       - release/*
     paths:
       - 'Cargo.toml'
+      - '.github/workflows/publish.yml'
 
 name: Publish
 jobs:
@@ -86,26 +87,10 @@ jobs:
         run: cargo build --release --all-features
 
   version:
-    name: Get Version
-    needs: build_linux
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Get version from Cargo.toml
-        id: version
-        run: |
-          VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/' | sed 's/-.*//')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Version detected: $VERSION"
-          echo "Release suffix detected: $RELEASE_SUFFIX"
-          echo "Full version detected: $FULL_VERSION"
-
-  add_version_tag:
     name: Add Version Tag
     needs:
       - check_context_tokens
       - build_linux
-      - version
 
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -116,7 +101,10 @@ jobs:
         run: |
           VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/' | sed 's/-.*//')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "release=$RELEASE_SUFFIX" >> $GITHUB_OUTPUT
           echo "Version detected: $VERSION"
+          echo "Release suffix detected: $RELEASE_SUFFIX"
+          echo "Full version detected: $FULL_VERSION"
 
       - name: Create Git Tag
         run: |
@@ -134,6 +122,7 @@ jobs:
           fi
           
           # Create and push the new tag
+          echo "Creating and pushing tag $TAG"
           git tag "$TAG"
           git push origin "$TAG"
 
@@ -181,7 +170,6 @@ jobs:
     needs:
       - audit
       - build_linux
-      - add_version_tag
       - version
 
     runs-on: ubuntu-latest
