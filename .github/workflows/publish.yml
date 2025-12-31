@@ -2,6 +2,7 @@ on:
   push:
     branches:
       - main
+      - release/*
     paths:
       - 'Cargo.toml'
 
@@ -85,11 +86,27 @@ jobs:
       - name: 'Build'
         run: cargo build --release --all-features
 
+  version:
+    name: Get Version
+    needs: build_linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Get version from Cargo.toml
+        id: version
+        run: |
+          VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/' | sed 's/-.*//')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version detected: $VERSION"
+          echo "Release suffix detected: $RELEASE_SUFFIX"
+          echo "Full version detected: $FULL_VERSION"
+
   add_version_tag:
     name: Add Version Tag
     needs:
       - check_context_tokens
       - build_linux
+      - version
 
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -104,16 +121,22 @@ jobs:
 
       - name: Create Git Tag
         run: |
-          git config --global user.name " github-actions[bot]"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          TAG="v${{ steps.version.outputs.version }}"
+          
           # Check if tag already exists
-          if git rev-parse "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
-            echo "Tag v${{ steps.version.outputs.version }} already exists, skipping tag creation"
-            exit 0
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists, moving it to the latest commit"
+            # Delete the tag locally and remotely
+            git tag -d "$TAG"
+            git push origin ":refs/tags/$TAG" || true
           fi
           
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git tag "v${{ steps.version.outputs.version }}"
-          git push origin "v${{ steps.version.outputs.version }}"
+          # Create and push the new tag
+          git tag "$TAG"
+          git push origin "$TAG"
 
   crates_io_publish:
     name: Publish (crates.io)
@@ -121,6 +144,7 @@ jobs:
       - check_context_tokens
       - audit
       - build_linux
+      - version
 
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -158,6 +182,8 @@ jobs:
     needs:
       - audit
       - build_linux
+      - add_version_tag
+      - version
 
     runs-on: ubuntu-latest
     timeout-minutes: 15
