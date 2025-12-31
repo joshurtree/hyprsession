@@ -57,9 +57,9 @@ jobs:
           
           # Optional variables (will use defaults if not set)
           echo "📋 Checking optional variables..."
-          echo "CRATES_IO_INITIAL_WAIT: ${{ vars.CRATES_IO_INITIAL_WAIT || 'not set (will use default: 180)' }}"
-          echo "CRATES_IO_RETRY_WAIT: ${{ vars.CRATES_IO_RETRY_WAIT || 'not set (will use default: 60)' }}"
-          
+          echo "PUBLISH_INITIAL_WAIT: ${{ vars.PUBLISH_INITIAL_WAIT || 'not set (will use default: 180)' }}"
+          echo "PUBLISH_RETRY_WAIT: ${{ vars.PUBLISH_RETRY_WAIT || 'not set (will use default: 60)' }}"
+
           echo "✅ All required context tokens are present!"
 
   audit:
@@ -171,6 +171,39 @@ jobs:
             --no-confirm \
             --execute
 
+      - name: Verify crates.io publication
+        run: |
+          PACKAGE_NAME="hyprsession"
+          VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/' | sed 's/-.*//')
+          INITIAL_WAIT=${{ vars.PUBLISH_INITIAL_WAIT || 10 }}
+          RETRY_WAIT=${{ vars.PUBLISH_RETRY_WAIT || 10 }}
+          MAX_ATTEMPTS=6
+          
+          echo "Verifying publication of $PACKAGE_NAME v$VERSION on crates.io..."
+          echo "Using INITIAL_WAIT=${INITIAL_WAIT}s, RETRY_WAIT=${RETRY_WAIT}s"
+          
+          # Wait for crates.io to update
+          echo "Waiting ${INITIAL_WAIT}s for crates.io to update..."
+          sleep $INITIAL_WAIT
+          
+          # Check if the version is available
+          ATTEMPT=0
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            echo "Attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS: Checking crates.io..."
+            if curl -s "https://crates.io/api/v1/crates/$PACKAGE_NAME" | grep -q "\"vers\":\"$VERSION\""; then
+              echo "✓ Successfully verified $PACKAGE_NAME v$VERSION is published on crates.io"
+              exit 0
+            fi
+            ATTEMPT=$((ATTEMPT + 1))
+            if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+              echo "Version not found yet, waiting ${RETRY_WAIT}s..."
+              sleep $RETRY_WAIT
+            fi
+          done
+          
+          echo "✗ Failed to verify publication on crates.io after $MAX_ATTEMPTS attempts"
+          exit 1
+
   aur_publish:
     name: Publish (AUR)
     needs:
@@ -216,27 +249,27 @@ jobs:
           license=('GPL-3.0-or-later')
           depends=()
           makedepends=('rust' 'cargo')
-          source=("$pkgname-$pkgver.tar.gz::https://github.com/joshurtree/hyprsession/archive/refs/tags/v$pkgver.tar.gz")
+          source=("\$pkgname-\$pkgver.tar.gz::https://github.com/joshurtree/hyprsession/archive/refs/tags/v\$pkgver.tar.gz")
           sha256sums=('${{ steps.checksum.outputs.checksum }}')
 
           build() {
-            cd "$pkgname-$pkgver"
+            cd "\$pkgname-\$pkgver"
             export RUSTUP_TOOLCHAIN=stable
             export CARGO_TARGET_DIR=target
             cargo build --frozen --release --all-features
           }
 
           check() {
-            cd "$pkgname-$pkgver"
+            cd "\$pkgname-\$pkgver"
             export RUSTUP_TOOLCHAIN=stable
             cargo test --frozen --all-features
           }
 
           package() {
-            cd "$pkgname-$pkgver"
-            install -Dm755 "target/release/$pkgname" "$pkgdir/usr/bin/$pkgname"
-            install -Dm644 "README.md" "$pkgdir/usr/share/doc/$pkgname/README.md"
-            install -Dm644 "LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+            cd "\$pkgname-\$pkgver"
+            install -Dm755 "target/release/\$pkgname" "\$pkgdir/usr/bin/\$pkgname"
+            install -Dm644 "README.md" "\$pkgdir/usr/share/doc/\$pkgname/README.md"
+            install -Dm644 "LICENSE" "\$pkgdir/usr/share/licenses/\$pkgname/LICENSE"
           }
           EOF
 
@@ -250,3 +283,48 @@ jobs:
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
           commit_message: "Update to version ${{ steps.version.outputs.version }}"
           ssh_keyscan_types: rsa,ecdsa,ed25519
+
+      - name: Verify AUR publication
+        run: |
+          PACKAGE_NAME="hyprsession"
+          VERSION="${{ steps.version.outputs.version }}"
+          INITIAL_WAIT=${{ vars.PUBLISH_INITIAL_WAIT || 15 }}
+          RETRY_WAIT=${{ vars.PUBLISH_RETRY_WAIT || 15 }}
+          MAX_ATTEMPTS=4
+          
+          echo "Verifying publication of $PACKAGE_NAME v$VERSION on AUR..."
+          echo "Using INITIAL_WAIT=${INITIAL_WAIT}s, RETRY_WAIT=${RETRY_WAIT}s"
+          
+          # Wait for AUR to update
+          echo "Waiting ${INITIAL_WAIT}s for AUR to update..."
+          sleep $INITIAL_WAIT
+          
+          # Check if the package is available via AUR RPC API
+          ATTEMPT=0
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            echo "Attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS: Checking AUR..."
+            RESPONSE=$(curl -s "https://aur.archlinux.org/rpc/?v=5&type=info&arg=$PACKAGE_NAME")
+            
+            if echo "$RESPONSE" | grep -q "\"resultcount\":1"; then
+              CURRENT_VERSION=$(echo "$RESPONSE" | grep -oP '"Version":"[^"]*"' | cut -d'"' -f4)
+              echo "Found package on AUR with version: $CURRENT_VERSION"
+              
+              if [ "$CURRENT_VERSION" = "$VERSION" ]; then
+                echo "✓ Successfully verified $PACKAGE_NAME v$VERSION is published on AUR"
+                exit 0
+              else
+                echo "Version mismatch: expected $VERSION, found $CURRENT_VERSION"
+              fi
+            else
+              echo "Package not found on AUR yet"
+            fi
+            
+            ATTEMPT=$((ATTEMPT + 1))
+            if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+              echo "Waiting ${RETRY_WAIT}s before retry..."
+              sleep $RETRY_WAIT
+            fi
+          done
+          
+          echo "✗ Failed to verify publication on AUR after $MAX_ATTEMPTS attempts"
+          exit 1
