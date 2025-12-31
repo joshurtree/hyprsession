@@ -101,8 +101,8 @@ jobs:
         id: version
         run: |
           VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/' | sed 's/-.*//')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "release=$RELEASE_SUFFIX" >> $GITHUB_OUTPUT
+          echo "::set-output name=version::$VERSION"
+          echo "::set-output name=release::$RELEASE_SUFFIX"
           echo "Version detected: $VERSION"
           echo "Release suffix detected: $RELEASE_SUFFIX"
           echo "Full version detected: $FULL_VERSION"
@@ -167,7 +167,7 @@ jobs:
             publish \
             --workspace \
             --all-features \
-            --allow-branch main \
+            --allow-branch ${{ github.ref_name }} \
             --no-confirm \
             --execute
 
@@ -222,8 +222,8 @@ jobs:
           FULL_VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
           VERSION=$(echo "$FULL_VERSION" | sed 's/-.*//')
           RELEASE_SUFFIX=$(echo "$FULL_VERSION" | grep -oP '(?<=-).*$' || echo "1")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "release=$RELEASE_SUFFIX" >> $GITHUB_OUTPUT
+          echo "::set-output name=version::$VERSION"
+          echo "::set-output name=release::$RELEASE_SUFFIX"
           echo "Version detected: $VERSION"
           echo "Release suffix detected: $RELEASE_SUFFIX"
 
@@ -233,7 +233,7 @@ jobs:
           # Create a temporary tarball from the repository
           git archive --format=tar.gz --prefix=hyprsession-${{ steps.version.outputs.version }}/ HEAD > hyprsession-${{ steps.version.outputs.version }}.tar.gz
           SHA256=$(sha256sum hyprsession-${{ steps.version.outputs.version }}.tar.gz | cut -d' ' -f1)
-          echo "checksum=$SHA256" >> $GITHUB_OUTPUT
+          echo "::set-output name=checksum::$SHA256"
           echo "SHA256: $SHA256"
 
       - name: Generate PKGBUILD file
@@ -287,7 +287,7 @@ jobs:
       - name: Verify AUR publication
         run: |
           PACKAGE_NAME="hyprsession"
-          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="${{ steps.version.outputs.version }}-${{ steps.version.outputs.release }}"
           INITIAL_WAIT=${{ vars.PUBLISH_INITIAL_WAIT || 15 }}
           RETRY_WAIT=${{ vars.PUBLISH_RETRY_WAIT || 15 }}
           MAX_ATTEMPTS=4
