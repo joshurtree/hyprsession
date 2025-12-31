@@ -227,14 +227,22 @@ jobs:
           echo "Version detected: $VERSION"
           echo "Release suffix detected: $RELEASE_SUFFIX"
 
-      - name: Get SHA256 checksum from repository
+      - name: Get SHA256 checksum from GitHub release
         id: checksum
         run: |
-          # Create a temporary tarball from the repository
-          git archive --format=tar.gz --prefix=hyprsession-${{ steps.version.outputs.version }}/ HEAD > hyprsession-${{ steps.version.outputs.version }}.tar.gz
-          SHA256=$(sha256sum hyprsession-${{ steps.version.outputs.version }}.tar.gz | cut -d' ' -f1)
+          VERSION="${{ steps.version.outputs.version }}"
+          URL="https://github.com/joshurtree/hyprsession/archive/refs/tags/v${VERSION}.tar.gz"
+          
+          echo "Downloading release tarball from: $URL"
+          curl -L -o "hyprsession-${VERSION}.tar.gz" "$URL"
+          
+          SHA256=$(sha256sum "hyprsession-${VERSION}.tar.gz" | cut -d' ' -f1)
           echo "::set-output name=checksum::$SHA256"
           echo "SHA256: $SHA256"
+          
+          # Verify the tarball can be extracted
+          tar -tzf "hyprsession-${VERSION}.tar.gz" >/dev/null
+          echo "✓ Tarball verified successfully"
 
       - name: Generate PKGBUILD file
         run: |-
