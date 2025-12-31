@@ -131,9 +131,6 @@ jobs:
           # Create and push the new tag
           git tag "$TAG"
           git push origin "$TAG"
-          echo "Creating and pushing tag $TAG"
-          git tag "$TAG"
-          git push origin "$TAG"
 
   crates_io_publish:
     name: Publish (crates.io)
