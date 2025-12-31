@@ -1,7 +1,6 @@
 on:
   push:
     branches:
-      - main
       - release/*
     paths:
       - 'Cargo.toml'
@@ -131,7 +130,7 @@ jobs:
             echo "Tag $TAG already exists, moving it to the latest commit"
             # Delete the tag locally and remotely
             git tag -d "$TAG"
-            git push origin ":refs/tags/$TAG" || true
+            git push --force origin ":refs/tags/$TAG" || true
           fi
           
           # Create and push the new tag
