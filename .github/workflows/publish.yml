@@ -1,9 +1,10 @@
 on:
   push:
     branches:
-      - main
+      - release/*
     paths:
       - 'Cargo.toml'
+      - '.github/workflows/publish.yml'
 
 name: Publish
 jobs:
@@ -56,9 +57,9 @@ jobs:
           
           # Optional variables (will use defaults if not set)
           echo "📋 Checking optional variables..."
-          echo "CRATES_IO_INITIAL_WAIT: ${{ vars.CRATES_IO_INITIAL_WAIT || 'not set (will use default: 180)' }}"
-          echo "CRATES_IO_RETRY_WAIT: ${{ vars.CRATES_IO_RETRY_WAIT || 'not set (will use default: 60)' }}"
-          
+          echo "PUBLISH_INITIAL_WAIT: ${{ vars.PUBLISH_INITIAL_WAIT || 'not set (will use default: 180)' }}"
+          echo "PUBLISH_RETRY_WAIT: ${{ vars.PUBLISH_RETRY_WAIT || 'not set (will use default: 60)' }}"
+
           echo "✅ All required context tokens are present!"
 
   audit:
@@ -85,11 +86,12 @@ jobs:
       - name: 'Build'
         run: cargo build --release --all-features
 
-  add_version_tag:
+  version:
     name: Add Version Tag
     needs:
       - check_context_tokens
       - build_linux
+      - audit
 
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -99,21 +101,36 @@ jobs:
         id: version
         run: |
           VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/' | sed 's/-.*//')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "::set-output name=version::$VERSION"
+          echo "::set-output name=release::$RELEASE_SUFFIX"
           echo "Version detected: $VERSION"
+          echo "Release suffix detected: $RELEASE_SUFFIX"
+          echo "Full version detected: $FULL_VERSION"
 
       - name: Create Git Tag
         run: |
-          git config --global user.name " github-actions[bot]"
-          # Check if tag already exists
-          if git rev-parse "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
-            echo "Tag v${{ steps.version.outputs.version }} already exists, skipping tag creation"
-            exit 0
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          TAG="v${{ steps.version.outputs.version }}"
+          
+          # Fetch all tags from remote to ensure we have the latest
+          git fetch --tags --force
+          
+          # Check if tag already exists (locally or remotely)
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists, moving it to the latest commit"
+            # Delete the tag locally
+            git tag -d "$TAG"
+            # Delete the tag remotely (force push to delete)
+            git push --force origin ":refs/tags/$TAG" || true
+          else
+            echo "Tag $TAG does not exist yet, creating new tag"
           fi
           
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git tag "v${{ steps.version.outputs.version }}"
-          git push origin "v${{ steps.version.outputs.version }}"
+          # Create and push the new tag
+          git tag "$TAG"
+          git push origin "$TAG"
 
   crates_io_publish:
     name: Publish (crates.io)
@@ -121,6 +138,7 @@ jobs:
       - check_context_tokens
       - audit
       - build_linux
+      - version
 
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -149,7 +167,7 @@ jobs:
             publish \
             --workspace \
             --all-features \
-            --allow-branch main \
+            --allow-branch ${{ github.ref_name }} \
             --no-confirm \
             --execute
 
@@ -158,6 +176,7 @@ jobs:
     needs:
       - audit
       - build_linux
+      - version
 
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -170,19 +189,27 @@ jobs:
           FULL_VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
           VERSION=$(echo "$FULL_VERSION" | sed 's/-.*//')
           RELEASE_SUFFIX=$(echo "$FULL_VERSION" | grep -oP '(?<=-).*$' || echo "1")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "release=$RELEASE_SUFFIX" >> $GITHUB_OUTPUT
+          echo "::set-output name=version::$VERSION"
+          echo "::set-output name=release::$RELEASE_SUFFIX"
           echo "Version detected: $VERSION"
           echo "Release suffix detected: $RELEASE_SUFFIX"
 
-      - name: Get SHA256 checksum from repository
+      - name: Get SHA256 checksum from GitHub release
         id: checksum
         run: |
-          # Create a temporary tarball from the repository
-          git archive --format=tar.gz --prefix=hyprsession-${{ steps.version.outputs.version }}/ HEAD > hyprsession-${{ steps.version.outputs.version }}.tar.gz
-          SHA256=$(sha256sum hyprsession-${{ steps.version.outputs.version }}.tar.gz | cut -d' ' -f1)
-          echo "checksum=$SHA256" >> $GITHUB_OUTPUT
+          VERSION="${{ steps.version.outputs.version }}"
+          URL="https://github.com/joshurtree/hyprsession/archive/refs/tags/v${VERSION}.tar.gz"
+          
+          echo "Downloading release tarball from: $URL"
+          curl -L -o "hyprsession-${VERSION}.tar.gz" "$URL"
+          
+          SHA256=$(sha256sum "hyprsession-${VERSION}.tar.gz" | cut -d' ' -f1)
+          echo "::set-output name=checksum::$SHA256"
           echo "SHA256: $SHA256"
+          
+          # Verify the tarball can be extracted
+          tar -tzf "hyprsession-${VERSION}.tar.gz" >/dev/null
+          echo "✓ Tarball verified successfully"
 
       - name: Generate PKGBUILD file
         run: |-
@@ -197,27 +224,27 @@ jobs:
           license=('GPL-3.0-or-later')
           depends=()
           makedepends=('rust' 'cargo')
-          source=("$pkgname-$pkgver.tar.gz::https://github.com/joshurtree/hyprsession/archive/refs/tags/v$pkgver.tar.gz")
+          source=("\$pkgname-\$pkgver.tar.gz::https://github.com/joshurtree/hyprsession/archive/refs/tags/v\$pkgver.tar.gz")
           sha256sums=('${{ steps.checksum.outputs.checksum }}')
 
           build() {
-            cd "$pkgname-$pkgver"
+            cd "\$pkgname-\$pkgver"
             export RUSTUP_TOOLCHAIN=stable
             export CARGO_TARGET_DIR=target
-            cargo build --frozen --release --all-features
+            cargo build --release --all-features
           }
 
           check() {
-            cd "$pkgname-$pkgver"
+            cd "\$pkgname-\$pkgver"
             export RUSTUP_TOOLCHAIN=stable
-            cargo test --frozen --all-features
+            cargo test --release --all-features
           }
 
           package() {
-            cd "$pkgname-$pkgver"
-            install -Dm755 "target/release/$pkgname" "$pkgdir/usr/bin/$pkgname"
-            install -Dm644 "README.md" "$pkgdir/usr/share/doc/$pkgname/README.md"
-            install -Dm644 "LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+            cd "\$pkgname-\$pkgver"
+            install -Dm755 "target/release/\$pkgname" "\$pkgdir/usr/bin/\$pkgname"
+            install -Dm644 "README.md" "\$pkgdir/usr/share/doc/\$pkgname/README.md"
+            install -Dm644 "LICENSE" "\$pkgdir/usr/share/licenses/\$pkgname/LICENSE"
           }
           EOF
 

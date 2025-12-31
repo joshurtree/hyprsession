@@ -1,6 +1,6 @@
 [package]
 name = "hyprsession"
-version = "0.2.0-4"
+version = "0.2.0-7"
 edition = "2021"
 authors = [ "Josh Andrews" ]
 license = "GPL-3.0"
@@ -25,4 +25,4 @@ path = "src/main.rs"
 
 [lib]
 name = "hyprsession"
-path = "src/lib.rs"
+path = "src/lib.rs" 
