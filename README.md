@@ -41,7 +41,7 @@ hyprsession save <session-name>
 ## Options
 Various options can be used to modify the behavior of Hyprsession.
 
-### <mode>
+### [mode]
 One of
 * default - Loads the session at startup the saves the current session at regular intervals.
 * load - Load the session given by name (clears current session first)
@@ -51,23 +51,24 @@ One of
 * delete - Delete a session
 * command - Create a command to deal with edge cases (see below)
  
-### <name>
+### [name]
 Name of the session or command
 
-### <command>
+### [command]
 Command to run (see below) 
 
-### --load-time n
+### -l, --load-time <load_time>
 The period of time after loading a session that windows are modified to match virtual counterparts
 
-### --save-interval n
+### -i, --save-interval <save_interval>
 This sets the interval in seconds between session saves. The default is 60 seconds.
-
-### --session-path
-This allows the user to save the session config in an alternative directory, by default its ~/.local/share/hyprsession. 
 
 ### --simulate
 Only simulate loading and clearing of sessions
+
+### --adjust-clients-only
+When loading a session this tell hyprsession to not clear the current session and restart programs. 
+Instead it moves the existing clients to match the saved session.
 
 ### --mode <mode> (depreciated)
 Sets the mode the program runs in 
@@ -75,6 +76,12 @@ Sets the mode the program runs in
 * SaveOnly - As above but skips loading the session
 * LoadAndExit - Load the saved session then immediatly exit
 * SaveAndExit - Save the current session then exit
+
+### -h, --help
+Display program help
+
+### -v, --version
+Display program version
 
 ## Command detection and bridge commands
 Detecting what command is needed to create any given window in wayland does not have a single uniform solution.

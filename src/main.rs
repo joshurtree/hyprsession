@@ -45,23 +45,19 @@ struct Args {
     mode: Mode,
 
     /// Name of the session to switch to or delete
-    #[arg(default_value_t = String::from(""))]
+    #[arg(default_value_t = String::from("default"))]
     name: String,
 
     /// Command to run (for Command mode)
     #[arg(default_value_t = String::from(""))]
     command: String,
 
-    /// Whether to store multiple clients owned by the same application
-    #[arg(long, default_value_t = false)]
-    save_duplicate_pids: bool,
-
     /// Interval between saving sessions (default: 60)
     #[arg(short = 'i', long, default_value_t = 60)]
     save_interval: u64,
 
-    /// Time to wait before considering the session loaded (default: 30)
-    #[arg(short = 'l', long, default_value_t = 30)]
+    /// Time to wait before considering the session loaded (default: 60)
+    #[arg(short = 'l', long, default_value_t = 60)]
     load_time: u64,
 
     /// Only simulate calls to Hyprland (supresses loading of session)
@@ -71,10 +67,6 @@ struct Args {
     /// Only adjust exiting clients without launching new programs
     #[arg(long, default_value_t = false)]
     adjust_clients_only: bool,
-
-    /// Number of times to save the session before exiting
-    #[arg(long, default_value_t = 0)]
-    save_count: u32,
 }
 
 fn migration_check(session_path: &str) {
@@ -118,7 +110,7 @@ fn main() -> hyprland::Result<()> {
         load_time: args.load_time,
         adjust_clients_only: args.adjust_clients_only,
         simulate: args.simulate,
-        save_duplicate_pids: args.save_duplicate_pids,
+        save_duplicate_pids: false,
     };
 
     match args.mode {
@@ -173,7 +165,7 @@ fn main() -> hyprland::Result<()> {
         exit(0);
     }
 
-    for _ in 0..(if args.save_count == 0 { 99999 } else { args.save_count }) {
+    loop {
         thread::sleep(time::Duration::from_secs(args.save_interval));
         session.save(&args.name)?;
     }

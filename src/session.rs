@@ -251,6 +251,7 @@ impl Session for LocalSession {
         let start_time = std::time::Instant::now();
 
         if !self.adjust_clients_only {
+            self.clear()?;
             load_programs(&base_dir.clone(), self.simulate)?;
         }
 
