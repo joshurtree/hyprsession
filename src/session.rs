@@ -6,6 +6,7 @@ use hyprland::shared::Address;
 use std::fs::File;
 use std::io::{read_to_string, Write};
 use crate::command_detection::fetch_command;
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 const EXEC_NAME: &str = "exec.conf";
@@ -88,11 +89,13 @@ fn adjust_client(real_client: &Client, session_client: &Client, simulate: bool) 
     };
 
     let client_addr = WindowIdentifier::Address(context.real_client.address.clone());
+    println!("found '{}' on workspace: {}", real_client.title, real_client.workspace.id);
+    println!("adjusting '{}' to workspace: {}", real_client.title, session_client.workspace.id);
     context.check_and_adjust(
         |c| c.workspace.id,
         || dispatch!(
             MoveToWorkspaceSilent, 
-            WorkspaceIdentifierWithSpecial::Id(real_client.workspace.id),
+            WorkspaceIdentifierWithSpecial::Id(session_client.workspace.id),
             Some(client_addr.clone())
         ), 
         format!("Moving {} to workspace {}", real_client.title, session_client.workspace.id).as_str(),
@@ -165,16 +168,19 @@ fn process_window_event(address: Address, clients_data: &'static str, start_time
         return;
     }
 
-    for session_client in clients.iter() {
-        if let Some(real_client) = Clients::get().expect("Unable to fetch clients")
-                                                        .iter()
-                                                        .find(|c| c.address == address) { 
-            println!("Adjusting client: {:?}", real_client.title);
-            adjust_client(real_client, session_client, simulate);
-        } else {
-            println!("Client '{:?}' not found - skipping", address);
+    let real_clients = Clients::get()
+        .expect("Unable to fetch clients");
+    if let Some(real_client) = real_clients.iter().find(|c| c.address == address) {
+        for session_client in clients.iter() {
+            if session_client.title == real_client.title {
+                println!("Adjusting client: {:?}", real_client.title);
+                adjust_client(real_client, session_client, simulate);
+                break;
+            } else {
+                println!("Client '{:?}' not found - skipping", address);
+            }
         }
-    } 
+    }
 }
 
 fn load_programs(base_path: &PathBuf, simulate: bool) -> hyprland::Result<()> {
@@ -218,13 +224,14 @@ impl Session for LocalSession {
             .expect("Failed to create clients file");
         let mut pids: Vec<i32> = vec![];
         let mut saved_clients: Vec<Client> = vec![];
+        let xdg_map: HashMap<String, String> = crate::command_faker::build_xdg_command_map();
 
         for info in client_info.iter().rev() {
             saved_clients.push(info.clone());
             if !self.save_duplicate_pids && pids.contains(&info.pid) {
                 continue;
             }
-            let cmd = fetch_command(info);
+            let cmd = fetch_command(info, &xdg_map);
             if !cmd.is_ok() {
                 continue;
             }
@@ -267,9 +274,11 @@ impl Session for LocalSession {
 
             let mut event_listener = EventListener::new();
             event_listener.add_window_title_changed_handler({move |event| {
+                println!("Window title changed: {}", event.address);
                 process_window_event(event.address, clients_data, start_time, load_time, simulate);
             }});
             event_listener.add_window_opened_handler({move |event| {
+                println!("Window opened: {}", event.window_address);
                 process_window_event(event.window_address, clients_data, start_time, load_time, simulate);
             }});
             let _ = event_listener.start_listener();

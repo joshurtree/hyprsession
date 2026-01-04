@@ -4,10 +4,10 @@ use std::{env, thread, time};
 //use serde::Deserialize;
 use clap::{Parser, ValueEnum};
 
-pub mod session;
 pub mod command_detection;
-pub mod legacy;
 pub mod command_faker;
+pub mod legacy;
+pub mod session;
 
 use crate::session::*;
 use crate::command_faker::fake_command;
@@ -169,8 +169,6 @@ fn main() -> hyprland::Result<()> {
         thread::sleep(time::Duration::from_secs(args.save_interval));
         session.save(&args.name)?;
     }
-
-    Ok(())
 }
 
 #[cfg(test)]

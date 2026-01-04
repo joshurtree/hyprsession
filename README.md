@@ -1,6 +1,6 @@
 # Hyprsession
 ## Overview
-Implements session persistance for Hyprland. While the program is running it periodicly saves the command, workspace and other properties of running clients found by `hyprctl clients`. These are then saved to a file formatted as a Hyprland config file which can then be sourced so that the session is restored when Hyprland is restarted.
+Implements session persistence for Hyprland. While the program is running it periodically saves the command, workspace and other properties of running clients found by `hyprctl clients`. These are then saved to a file formatted as a Hyprland config file which can then be sourced so that the session is restored when Hyprland is restarted.
 
 <a href="https://www.buymeacoffee.com/joshurtree" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-red.png" alt="Buy Me A Coffee" height="41" width="174"></a>
 
@@ -28,7 +28,7 @@ hyprsession.url = "github:joshurtree/hyprsession"
 Then either add the package to your `configuration.nix` or use `${inputs.hyprsession.packages.${pkgs.system}.hyprsession}/bin/hyprsession` in place of `hyprsession` to run the program.
 
 ## Usage
-To automaticly run the program in future sessions add the following line to your Hyprland config file (Usually at ~/.config/hypr/hyprland.conf)
+To automatically run the program in future sessions add the following line to your Hyprland config file (Usually at ~/.config/hypr/hyprland.conf)
 ```
 exec-once = hyprsession
 ```
@@ -67,14 +67,14 @@ This sets the interval in seconds between session saves. The default is 60 secon
 Only simulate loading and clearing of sessions
 
 ### --adjust-clients-only
-When loading a session this tell hyprsession to not clear the current session and restart programs. 
+When loading a session this tell Hyprsession to not clear the current session and restart programs. 
 Instead it moves the existing clients to match the saved session.
 
 ### --mode <mode> (depreciated)
 Sets the mode the program runs in 
 * Default - Loads the session at startup the saves the current session at regular intervals.
 * SaveOnly - As above but skips loading the session
-* LoadAndExit - Load the saved session then immediatly exit
+* LoadAndExit - Load the saved session then immediately exit
 * SaveAndExit - Save the current session then exit
 
 ### -h, --help
@@ -89,7 +89,7 @@ The information within the `/proc` directory is used to try and find this. If th
 via $PATH then the `initial_class` of the window is checked followed by `initial_title`.  
 
 With applications that come in the form of Flatpaks, Snaps or Electron apps this method does not produce a proper result. 
-To solve this requires the use of brige commands. By running `hyprctl clients` you can find the `initial_class` of the window. You can then create a bridging command to run the correct command on startup. For example if you use the Firefox flatpak then runing
+To solve this requires the use of bridge commands. By running `hyprctl clients` you can find the `initial_class` of the window. You can then create a bridging command to run the correct command on startup. For example if you use the Firefox flatpak then running
 ```
 hyprsession command firefox "flatpak run org.mozilla.firefox"
 ```
@@ -118,9 +118,25 @@ creates a script in the `~/.local/bin` directory that runs the correct command.
 * Track client creation to try and better place them
 * Introduce bridge command functionality to deal with programs complicated launch patterns (flatpak, snap etc.)
 * Refactor code to allow potential future use as either standalone or as a client
+### 0.2.1
+* Fix faulty post client creation logic
+* Cleanup and properly document parameters
+* Add parameter documentation test
+* Use .desktop files to help find correct command
+
+## Future development
+The original intention for this project was to replicate the experience I had in KDE where most my programs would return after I switched on
+my computer. This with this update (0.2.1) it seems to be able to do that but the way it is achieved is somewhat hacky. 
+The problem is that the Hyprland dispatcher/event system is oriented around user interaction. This is particularly apparent with application 
+grouping that has dispatchers for adding applications to a group on the left or right. For a user this is easy but the program does know 
+its left from right, so I have to program that logic in as well and any method could be easily broken by edge cases or future Hyprland updates.
+
+The plan going forward is to concentrate on porting the code to a Hyprland plugin. This should give me low level access to client positioning
+needed to maintain the session in a cleaner manner and access new features without relying on a dispatcher being created to perform the task. 
+The intention is the maintain the standalone program and fix any bugs that found. It will also become the cli frontend of the plugin. I am
+not planning to add any further features to `hyprsession`. Instead enhancements such as grouping applications will come via the plugin.
 
 ## Development
-
 ### Running Tests
 Along side the standard tests you can create a test within a vm using nix by running 
 ```bash
@@ -137,6 +153,9 @@ This will:
 
 Test results are saved to `tests/test-results/` with detailed comparison data. The programs started can be changed by
 editing `tests/vm-test/exec.conf`
+
+### Session location
+By default the sessions are saved to `~/.local/share/hyprsession`. For testing without disrupting your main instance you can set the variable `HYPRSESSION_PATH` variable in your shell before running the test version of the program. 
 
 ## Thanks
 

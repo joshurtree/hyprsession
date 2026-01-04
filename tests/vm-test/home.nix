@@ -27,15 +27,11 @@ let
       hyprsession delete test-session || true
     fi
 
-    rm -rf ~/.mozilla/firefox
-    echo "{ \"SKIP_UPDATE_CHECK\": true }" > ~/.config/discord/settings.json    
-
     echo "=== Phase 1: Loading test applications ==="
 
     cat /shared/exec.conf | while read -r line; do
       echo "Starting application: $line"
       hyprctl dispatch exec $line
-      sleep 1
     done
 
     sleep 60
