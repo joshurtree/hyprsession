@@ -3,6 +3,7 @@ use std::fs;
 use std::process::Command;
 use hyprland::data::{Client, Clients};
 use hyprland::shared::HyprData;
+use std::collections::HashMap;
 
 /// Check if a command exists in PATH using 'which'
 pub fn command_exists_in_path(command: &str) -> bool {
@@ -30,62 +31,6 @@ fn extract_binary_name(command: &str) -> String {
 
     format!("{} {}", binary, parts.skip(1).collect::<Vec<&str>>().join(" ")).trim().to_string()
 }
-
-/*
-/// Handle NixOS wrapped commands
-pub fn handle_nix_wrapped(command: &str) -> Option<String> {
-    // Handle both formats: /nix/store/hash-name-wrapped and .name-wrapped
-    let re = Regex::new(r"(?:/nix/store/[^/]*-|\.?)([^/\s]+)-wrapped(.*)").ok()?;
-    let caps = re.captures(command)?;
-    let unwrapped = caps.get(1)?.as_str();
-    let args = caps.get(2).map_or("", |m| m.as_str());
-    Some(if args.is_empty() {
-        unwrapped.to_string()
-    } else {
-        format!("{}{}", unwrapped, args)
-    })
-}
-
-/// Handle Flatpak applications
-pub fn handle_flatpak(command: &str) -> Option<String> {
-    if !command.contains("flatpak") {
-        return None;
-    }
-    
-    // Look for --app-id= first, then fall back to positional argument
-    if let Ok(re) = Regex::new(r"--app-id=([^\s]+)") {
-        if let Some(caps) = re.captures(command) {
-            return Some("flatpak run ".to_string() + &caps.get(1).map(|m| m.as_str().to_string()).unwrap_or_default());
-        }
-    }
-    
-    // Fall back to first non-option argument after 'flatpak run'
-    let re = Regex::new(r"flatpak\s+run\s+(?:--[^\s]+=?[^\s]*\s+)*([a-zA-Z0-9._-]+(?:\.[a-zA-Z0-9._-]+)+)").ok()?;
-    re.captures(command)
-        .and_then(|caps| caps.get(1))
-        .map(|m| m.as_str().to_string())
-}
-
-/// Handle AppImage applications
-pub fn handle_appimage(command: &str) -> Option<String> {
-    let re = Regex::new(r"([^/\s]+\.AppImage)").ok()?;
-    re.captures(command)
-        .and_then(|caps| caps.get(1))
-        .map(|m| m.as_str().to_string())
-}
-
-/// Handle Snap applications
-pub fn handle_snap(command: &str) -> Option<String> {
-    if !command.contains("/snap/") {
-        return None;
-    }
-    
-    let re = Regex::new(r"/snap/([^/]+)").ok()?;
-    re.captures(command)
-        .and_then(|caps| caps.get(1))
-        .map(|m| m.as_str().to_string())
-}
-*/
 
 fn handle_proc_cmdline(client: &Client) -> Result<String, std::io::Error> {
     let cmdline_path = format!("/proc/{}/cmdline", client.pid);
@@ -120,7 +65,7 @@ fn handle_initial_title(client: &Client) -> Result<String, std::io::Error> {
 }
 
 /// Fetch command for a Hyprland client using multiple detection methods
-pub fn fetch_command(client: &Client) -> Result<String, std::io::Error> {
+pub fn fetch_command(client: &Client, xdg_map: &HashMap<String, String>) -> Result<String, std::io::Error> {
     let handlers = vec![
         handle_proc_cmdline,
         handle_proc_exe,
@@ -132,6 +77,11 @@ pub fn fetch_command(client: &Client) -> Result<String, std::io::Error> {
         if let Ok(command) = handler(client) {
             if command_exists_in_path(&command) {
                 return Ok(command);
+            } else {
+                // Fallback: check in xdg_map
+                if let Some(xdg_command) = xdg_map.get(&command) {
+                    return Ok(xdg_command.clone());
+                }
             }
         }
     }

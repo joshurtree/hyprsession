@@ -89,9 +89,8 @@
         services.flatpak = {
           enable = true;
           packages = [
-            "org.mozilla.firefox"
             "com.obsproject.Studio"
-            "com.collaboraoffice.Office"
+            "io.github.kriptolix.Poliedros"
           ];
         };
         
