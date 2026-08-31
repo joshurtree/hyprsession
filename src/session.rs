@@ -6,6 +6,7 @@ use hyprland::shared::Address;
 use std::fs::File;
 use std::io::{read_to_string, Write};
 use crate::command_detection::fetch_command;
+use crate::lua_dispatch;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -81,6 +82,15 @@ impl CheckAndAdjust for ClientAdjustmentContext<'_> {
     }
 }
 
+/// Sends the Lua form on a Lua-configured Hyprland, the classic dispatcher otherwise.
+fn run_dispatch(lua: impl FnOnce() -> String, legacy: impl FnOnce() -> hyprland::Result<()>) -> hyprland::Result<()> {
+    if lua_dispatch::enabled() {
+        lua_dispatch::dispatch(&lua())
+    } else {
+        legacy()
+    }
+}
+
 fn adjust_client(real_client: &Client, session_client: &Client, simulate: bool) {
     let context = ClientAdjustmentContext {
         real_client: real_client,
@@ -93,47 +103,62 @@ fn adjust_client(real_client: &Client, session_client: &Client, simulate: bool) 
     println!("adjusting '{}' to workspace: {}", real_client.title, session_client.workspace.id);
     context.check_and_adjust(
         |c| c.workspace.id,
-        || dispatch!(
-            MoveToWorkspaceSilent, 
-            WorkspaceIdentifierWithSpecial::Id(session_client.workspace.id),
-            Some(client_addr.clone())
+        || run_dispatch(
+            || lua_dispatch::move_to_workspace(real_client, session_client.workspace.id),
+            || dispatch!(
+                MoveToWorkspaceSilent,
+                WorkspaceIdentifierWithSpecial::Id(session_client.workspace.id),
+                Some(client_addr.clone())
+            )
         ), 
         format!("Moving {} to workspace {}", real_client.title, session_client.workspace.id).as_str(),
         format!("Failed to move client to workspace {}", real_client.title).as_str()
     );
     context.check_and_adjust(
         |c| c.monitor.unwrap_or(0),
-        || dispatch!(
-            MoveWorkspaceToMonitor, 
-            WorkspaceIdentifier::Id(session_client.workspace.id), 
-            MonitorIdentifier::Id(session_client.monitor.unwrap_or(0))
+        || run_dispatch(
+            || lua_dispatch::move_workspace_to_monitor(session_client.workspace.id, session_client.monitor.unwrap_or(0)),
+            || dispatch!(
+                MoveWorkspaceToMonitor,
+                WorkspaceIdentifier::Id(session_client.workspace.id),
+                MonitorIdentifier::Id(session_client.monitor.unwrap_or(0))
+            )
         ), 
         format!("Moving {} to monitor {}", real_client.title, session_client.monitor.unwrap_or(0)).as_str(),
         format!("Failed to move client to monitor {}", real_client.title).as_str()
     );
     context.check_and_adjust(
         |c| c.floating,
-        || dispatch!(ToggleFloating, Some(client_addr.clone())),
+        || run_dispatch(
+            || lua_dispatch::set_floating(real_client, session_client.floating),
+            || dispatch!(ToggleFloating, Some(client_addr.clone()))
+        ),
         format!("Toggling floating for client {}", real_client.title).as_str(),
         format!("Failed to toggle floating for client {}", real_client.title).as_str()
     );
     context.check_and_adjust(
         |c| c.pinned,
-        || dispatch!(TogglePinWindow, client_addr.clone()),
+        || run_dispatch(
+            || lua_dispatch::set_pinned(real_client, session_client.pinned),
+            || dispatch!(TogglePinWindow, client_addr.clone())
+        ),
         format!("Pinning client window {}", real_client.title).as_str(),
         format!("Failed to pin client window {}", real_client.title).as_str()
     );
     context.check_and_adjust(
         |c| c.fullscreen,
-        || {        
-            dispatch!(FocusWindow, client_addr.clone()).unwrap_or_else(|_| {
-                println!("Warning: Failed to focus client window: {}", real_client.title);
-            });
-            dispatch!(
-                ToggleFullscreen,
-                if session_client.fullscreen == FullscreenMode::Maximized { FullscreenType::Maximize } else { FullscreenType::Real }
-            )
-        },
+        || run_dispatch(
+            || lua_dispatch::set_fullscreen(real_client, session_client.fullscreen == FullscreenMode::Maximized),
+            || {
+                dispatch!(FocusWindow, client_addr.clone()).unwrap_or_else(|_| {
+                    println!("Warning: Failed to focus client window: {}", real_client.title);
+                });
+                dispatch!(
+                    ToggleFullscreen,
+                    if session_client.fullscreen == FullscreenMode::Maximized { FullscreenType::Maximize } else { FullscreenType::Real }
+                )
+            }
+        ),
         format!("Toggling fullscreen for client {}", real_client.title).as_str(),
         format!("Failed to toggle fullscreen for client {}", real_client.title).as_str()
     );
@@ -141,10 +166,13 @@ fn adjust_client(real_client: &Client, session_client: &Client, simulate: bool) 
     if session_client.fullscreen == FullscreenMode::None {
         println!("Moving client: {}", real_client.title);
         if !context.simulate {
-            hyprland::dispatch!(
-                MoveWindowPixel,
-                Position::Exact(session_client.at.0, session_client.at.1),
-                WindowIdentifier::Address(real_client.address.clone())
+            run_dispatch(
+                || lua_dispatch::move_to(real_client, session_client.at),
+                || dispatch!(
+                    MoveWindowPixel,
+                    Position::Exact(session_client.at.0, session_client.at.1),
+                    WindowIdentifier::Address(real_client.address.clone())
+                )
             ).unwrap_or_else(|_| {
                 println!("Warning: Failed to move client window: {:?}", real_client.title);
             });
@@ -188,10 +216,18 @@ fn load_programs(base_path: &PathBuf, simulate: bool) -> hyprland::Result<()> {
 
     if session_file.is_ok() {
         for line in read_to_string(session_file.unwrap()).unwrap().lines() {
-            if !simulate {
-                hyprland::dispatch!(Exec, line)?;
+            if lua_dispatch::enabled() {
+                let expr = lua_dispatch::exec_cmd(line);
+                println!("Sending: dispatch {expr}");
+                if !simulate {
+                    lua_dispatch::dispatch(&expr)?;
+                }
+            } else {
+                println!("Sending: dispatch exec {line}");
+                if !simulate {
+                    hyprland::dispatch!(Exec, line)?;
+                }
             }
-            println!("Sending: dispatch exec {line}");
         }
     }
 
