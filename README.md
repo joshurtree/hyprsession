@@ -38,6 +38,15 @@ If you want to save a session that is already running then run
 hyprsession save <session-name>
 ```
 
+### Hyprland 0.55+ with a Lua config
+Hyprland evaluates IPC dispatch requests as Lua once you configure it through `hyprland.lua`. Hyprsession detects that at startup and sends `hl.dsp.*` expressions instead of the classic dispatcher strings, so nothing changes on your side beyond the autostart line:
+```lua
+hl.on("hyprland.start", function()
+  hl.exec_cmd("hyprsession")
+end)
+```
+Sessions saved under either config style keep the same `exec.conf` format.
+
 ## Options
 Various options can be used to modify the behavior of Hyprsession.
 

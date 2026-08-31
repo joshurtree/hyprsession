@@ -7,6 +7,7 @@ use clap::{Parser, ValueEnum};
 pub mod command_detection;
 pub mod command_faker;
 pub mod legacy;
+pub mod lua_dispatch;
 pub mod session;
 
 use crate::session::*;
